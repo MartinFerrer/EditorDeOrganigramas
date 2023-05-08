@@ -25,16 +25,8 @@ class Dependencia(param.Parameterized):
     def __str__(self):
         return f"Dependencia: {self.nombre}, Código: {self.codigo}, Responsable: {self.codigoResponsable}"
     
-    # TODO: Generar codigo unico entre 000 y 999
-    def genera_code(self):
-        code = randint(0, 999)
-        if code < 10:
-            code = "00" + str(code)
-        elif code >= 10 and code < 100:
-            code = "0" + str(code)
-        else:
-            code = str(code)
-        return code
+    
+    
 
 
         
