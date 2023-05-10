@@ -26,16 +26,16 @@ class Archivo():
 
     
     def generarCodigoDependencia(self): #Genera codigo de dependencia y verifica que no exista.
-        if self.codigoPersonaMasAlto != 999:
+        if self.codigoDependenciaMasAlto != 999:
             codigo = self.codigoDependenciaMasAlto + 1
             self.codigoDependenciaMasAlto = codigo
             return str(codigo).zfill(4)
         else:
-            for i in range(10000):
+            for i in range(1000):
                 codigo = str(i).zfill(4)
                 if codigo not in self.dependenciasPorCodigo.keys:
                     return codigo
-            raise RuntimeError("No se pudo generar codigo para persona! No hay codigos disponibles.")
+            raise RuntimeError("No se pudo generar codigo para dependencia! No hay codigos disponibles.")
 
 
 
@@ -67,7 +67,10 @@ class Archivo():
         pass
             
     # TODO: Implementar
-    def crearDependencia():
+    def crearDependencia(self, nom):
+        cod = self.generarCodigoDependencia()
+        dep = Dependencia(codigo = cod, codres = None, nombre = nom)
+        self.dependenciasPorCodigo[cod] = dep
         pass
     
     # TODO: Implementar
@@ -75,17 +78,27 @@ class Archivo():
         pass
     
     # TODO: Implementar
-    def modificarDependencia():
-        pass
+    def modificarDependencia(self, cod_indice, nombre_nuevo, codres_nuevo):
+        # No sé si hace falta los ifs?
+        # if codres_nuevo in self.personasPorCodigo:
+            # if cod_indice in self.dependenciasPorCodigo:
+                codres_nuevo = codres_nuevo.zfill(4)
+                dep_destino = self.dependenciasPorCodigo[cod_indice]            
+                if codres_nuevo in self.personasPorCodigo:
+                    self.personasPorCodigo[codres_nuevo].dependencia = dep_destino.codigo
+                    dep_destino.codigoResponsable = codres_nuevo
+                if nombre_nuevo != None: 
+                    dep_destino.nombre = nombre_nuevo
+                pass
     
     # TODO: Implementar
     def editarUbicacionDependencia():
         pass
     
     # TODO: Implementar
-    def ingresarPersona(self, nombre):
-        cod = Archivo.genera_code_dependencia()
-        persona = Persona(codigo = cod, nombre = nombre)
+    def ingresarPersona(self, nom):
+        cod = self.generarCodigoPersona()
+        persona = Persona(codigo = cod, nombre = nom)
         self.personasPorCodigo[cod] = persona
         pass
     
@@ -94,13 +107,16 @@ class Archivo():
         pass
     
     # TODO: Implementar
-    def modificarPersona():
+    def modificarPersona(self, persona_nueva : Persona):
+        persona_destino = self.personasPorCodigo[persona_nueva.codigo]
+        persona_destino.dependencia = persona_nueva.dependencia
+        persona_destino.nombre = persona_nueva.nombre
+        persona_destino.apellido = persona_nueva.apellido
+        persona_destino.telefono = persona_nueva.telefono
+        persona_destino.direccion = persona_nueva.direccion
+        persona_destino.salario = persona_nueva.salario
         pass
     
     # TODO: Implementar
-    def asignarPersonaADependencia():
+    def asignarPersonaADependencia(self):
         pass
-
-
-
-        
