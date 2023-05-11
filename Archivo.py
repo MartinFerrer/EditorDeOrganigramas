@@ -11,7 +11,7 @@ class Archivo():
         self.organigrama = Organigrama()
         """Informacion acerca del organigrama"""
 
-        self.raiz = NodoArbol()
+        self.raiz = NodoArbol(None)
 
         self.dependenciasPorCodigo = {}
         """Un diccionario relacionando a los objetos de Dependencia con su codigo de 3 digitos"""
@@ -33,7 +33,7 @@ class Archivo():
         else:
             for i in range(1000):
                 codigo = str(i).zfill(3)
-                if codigo not in self.dependenciasPorCodigo.keys:
+                if codigo not in self.dependenciasPorCodigo.keys():
                     return codigo
             raise RuntimeError("No se pudo generar codigo para dependencia! No hay codigos disponibles.")
 
@@ -47,7 +47,7 @@ class Archivo():
         else:
             for i in range(10000):
                 codigo = str(i).zfill(4)
-                if codigo not in self.personasPorCodigo.keys:
+                if codigo not in self.personasPorCodigo.keys():
                     return codigo
             raise RuntimeError("No se pudo generar codigo para persona! No hay codigos disponibles.")
 
@@ -79,18 +79,14 @@ class Archivo():
     
     # TODO: Implementar
     def modificarDependencia(self, cod_indice, nombre_nuevo, codres_nuevo):
-        # No sé si hace falta los ifs?
-        # if codres_nuevo in self.personasPorCodigo:
-            # if cod_indice in self.dependenciasPorCodigo:
-                codres_nuevo = codres_nuevo.zfill(4)
-                dep_destino = self.dependenciasPorCodigo[cod_indice]            
-                if codres_nuevo in self.personasPorCodigo:
-                    self.personasPorCodigo[codres_nuevo].dependencia = dep_destino.codigo
-                    dep_destino.codigoResponsable = codres_nuevo
-                if nombre_nuevo != None: 
-                    dep_destino.nombre = nombre_nuevo
-                pass
-    
+        dep_destino = self.dependenciasPorCodigo[cod_indice]            
+        if codres_nuevo in self.personasPorCodigo.keys():
+            self.personasPorCodigo[codres_nuevo].dependencia = dep_destino.codigo
+            dep_destino.codigoResponsable = codres_nuevo
+        if nombre_nuevo != None: 
+            dep_destino.nombre = nombre_nuevo
+        pass
+
     # TODO: Implementar
     def editarUbicacionDependencia():
         pass
@@ -104,7 +100,7 @@ class Archivo():
     
     # TODO: Implementar
     def eliminarPersona(self, cod_indice):
-        for elem in self.dependenciasPorCodigo:
+        for elem in self.dependenciasPorCodigo.values():
             if elem.codigoResponsable == cod_indice:
                 elem.codigoResponsable = None
                 break
@@ -127,3 +123,4 @@ class Archivo():
         persona = self.personasPorCodigo[cod_persona]
         persona.dependencia = dependenciaAsignada
         pass
+
