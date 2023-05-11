@@ -103,7 +103,12 @@ class Archivo():
         pass
     
     # TODO: Implementar
-    def eliminarPersona():
+    def eliminarPersona(self, cod_indice):
+        for elem in self.dependenciasPorCodigo:
+            if elem.codigoResponsable == cod_indice:
+                elem.codigoResponsable = None
+                break
+        self.personasPorCodigo.pop('key', None)
         pass
     
     # TODO: Implementar
@@ -121,6 +126,4 @@ class Archivo():
     def asignarPersonaADependencia(self, cod_persona, dependenciaAsignada):
         persona = self.personasPorCodigo[cod_persona]
         persona.dependencia = dependenciaAsignada
-
-
         pass
