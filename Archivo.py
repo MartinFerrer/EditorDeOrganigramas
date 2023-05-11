@@ -29,10 +29,10 @@ class Archivo():
         if self.codigoDependenciaMasAlto != 999:
             codigo = self.codigoDependenciaMasAlto + 1
             self.codigoDependenciaMasAlto = codigo
-            return str(codigo).zfill(4)
+            return str(codigo).zfill(3)
         else:
             for i in range(1000):
-                codigo = str(i).zfill(4)
+                codigo = str(i).zfill(3)
                 if codigo not in self.dependenciasPorCodigo.keys:
                     return codigo
             raise RuntimeError("No se pudo generar codigo para dependencia! No hay codigos disponibles.")
@@ -96,9 +96,9 @@ class Archivo():
         pass
     
     # TODO: Implementar
-    def ingresarPersona(self, nom):
+    def ingresarPersona(self, nom, ape, ci, tel, dir, salario):
         cod = self.generarCodigoPersona()
-        persona = Persona(codigo = cod, nombre = nom)
+        persona = Persona(codigo = cod, nombre = nom, apellido = ape, documento = ci, telefono = tel, direccion = dir, salario = salario)
         self.personasPorCodigo[cod] = persona
         pass
     
@@ -118,5 +118,9 @@ class Archivo():
         pass
     
     # TODO: Implementar
-    def asignarPersonaADependencia(self):
+    def asignarPersonaADependencia(self, cod_persona, dependenciaAsignada):
+        persona = self.personasPorCodigo[cod_persona]
+        persona.dependencia = dependenciaAsignada
+
+
         pass
