@@ -108,7 +108,7 @@ class Archivo():
             if elem.codigoResponsable == cod_indice:
                 elem.codigoResponsable = None
                 break
-        self.personasPorCodigo.pop('key', None)
+        self.personasPorCodigo.pop(cod_indice)
         pass
     
     # TODO: Implementar
