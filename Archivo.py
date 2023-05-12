@@ -56,8 +56,11 @@ class Archivo():
     
 
     
+    # TODO: Implementar
+    def crearOrganigrama(self):
+        pass
 
-    
+
     # TODO: Implementar
     def graficarOrganigrama(nodo):
         pass
@@ -72,10 +75,42 @@ class Archivo():
         dep = Dependencia(codigo = cod, codres = None, nombre = nom)
         self.dependenciasPorCodigo[cod] = dep
         pass
+
     
-    # TODO: Implementar
-    def eliminarDependencia():
-        pass
+
+    def desAsignarPersona(self, codigo):
+        for elem in self.personasPorCodigo.values():
+                if elem.dependencia == codigo:
+                    elem.dependencia = None
+                    elem.salario = 0
+
+
+    def eliminarSuc(self, Base: 'NodoArbol'):
+        for nodo in Base.children:
+            self.eliminarDependencia(nodo)
+            self.desAsignarPersona(nodo.data.codigo)
+            self.dependenciasPorCodigo.pop(nodo.data.codigo)
+            Base.children.remove(nodo)
+        return
+    
+
+
+    def buscar_nodo(self, Base: 'NodoArbol', Raiz: 'NodoArbol'):
+        for nodo in Raiz.children:
+            if nodo.data.codigo == Base.data.codigo:
+                self.eliminarDependencia(Base)
+                self.desAsignarPersona(nodo.data.codigo)
+                self.dependenciasPorCodigo.pop(nodo.data.codigo)
+                Raiz.children.remove(nodo)
+            else:
+                self.buscar_nodo(Base, nodo)
+
+
+            
+            
+
+
+
     
     # TODO: Implementar
     def modificarDependencia(self, cod_indice, nombre_nuevo, codres_nuevo):
