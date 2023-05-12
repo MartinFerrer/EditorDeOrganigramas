@@ -29,6 +29,5 @@ class NodoArbol:
     def nodo_es_hijo(self, nodo):
         return nodo in self.children
 
-    def padre(self, nodo, nodo_es_hijo) -> 'NodoArbol':
-        return self.buscar_nodo(self, nodo, nodo_es_hijo)
-
+    def padre(self, raiz : 'NodoArbol') -> 'NodoArbol':
+        return raiz.buscar_nodo(self, self.nodo_es_hijo)

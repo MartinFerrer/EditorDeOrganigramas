@@ -83,7 +83,7 @@ class Archivo():
             return nodo.data.codigo == codigo
         nodo = self.raiz.buscar_nodo(codigo_dependencia, compararCodigo)
 
-        padre : NodoArbol = nodo.padre()
+        padre : NodoArbol = nodo.padre(self.raiz)
         padre.eliminar_hijo(nodo)
         self.eliminarNodoYSucesores(nodo)
 
@@ -110,7 +110,7 @@ class Archivo():
 
     def editarUbicacionDependencia(self, nodoMover: NodoArbol, nuevoNodoPadre: NodoArbol):
         """Agrega en los hijos de nodoDestino el objeto nodoMover y elimina de los hijos del anterior padre."""
-        padre : NodoArbol = nodoMover.padre()
+        padre : NodoArbol = nodoMover.padre(self.raiz)
         padre.eliminar_hijo(nodoMover)
         nuevoNodoPadre.agregar_hijo(nodoMover)
 
