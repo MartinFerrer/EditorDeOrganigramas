@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Any
 if TYPE_CHECKING:
     from Dependencia import Dependencia
 
@@ -7,7 +7,10 @@ class NodoArbol:
 
     def __init__(self, data: 'Dependencia'):
         self.data = data
-        self.children = []
+        self.children : list[NodoArbol] = []
+
+    def __str__(self):
+        return str(self.data)
 
     def agregar_hijo(self, nodo_hijo: 'NodoArbol'):
         if not isinstance(nodo_hijo, NodoArbol):
@@ -17,6 +20,15 @@ class NodoArbol:
     def eliminar_hijo(self, nodo_hijo: 'NodoArbol'):
         self.children.remove(nodo_hijo)
 
-    def __str__(self):
-        return str(self.data)
+    def buscar_nodo(self, buscado, buscador : Callable[['NodoArbol', Any], bool]) -> 'NodoArbol':
+        if buscador(self, buscado):
+            return self
+        for nodo in self.children:
+            nodo.buscar_nodo(buscado, buscador)
+
+    def nodo_es_hijo(self, nodo):
+        return nodo in self.children
+
+    def padre(self, nodo, nodo_es_hijo) -> 'NodoArbol':
+        return self.buscar_nodo(self, nodo, nodo_es_hijo)
 
