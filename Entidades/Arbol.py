@@ -20,14 +20,17 @@ class NodoArbol:
     def eliminar_hijo(self, nodo_hijo: 'NodoArbol'):
         self.children.remove(nodo_hijo)
 
-    def buscar_nodo(self, buscado, buscador : Callable[['NodoArbol', Any], bool]) -> 'NodoArbol':
+    def buscar_nodo(self, buscado, buscador: Callable[['NodoArbol', Any], bool]) -> 'NodoArbol':
         if buscador(self, buscado):
             return self
         for nodo in self.children:
-            nodo.buscar_nodo(buscado, buscador)
-
+            resultado = nodo.buscar_nodo(buscado, buscador)
+            if resultado is not None:  
+                return resultado
+        return None 
+    
     def nodo_es_hijo(self, nodo):
         return nodo in self.children
 
-    def padre(self, raiz : 'NodoArbol') -> 'NodoArbol':
-        return raiz.buscar_nodo(self, self.nodo_es_hijo)
+    def padre(self, raiz: 'NodoArbol') -> 'NodoArbol':
+        return raiz.buscar_nodo(self, NodoArbol.nodo_es_hijo)
