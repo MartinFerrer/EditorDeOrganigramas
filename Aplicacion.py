@@ -1,23 +1,73 @@
-from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QPushButton
-from PyQt6.QtGui import QFont
+from PyQt6.QtWidgets import (
+    QApplication, 
+    QMainWindow, 
+    QLabel, 
+    QToolBar,
+    QDockWidget,
+    QLineEdit, 
+    QPushButton,
+    QTextEdit,
+    QSplitter,
+    QWidget,
+    QVBoxLayout,
+    QSizePolicy)
+from PyQt6.QtCore import Qt, QPoint, QPointF, QSize
+from PyQt6.QtGui import QFont, QAction, QMouseEvent
 import pickle, pickletools
 
 from Entidades.Arbol import *
 from Entidades.Persona import *
 from Entidades.Dependencia import *
+from Archivo import *
+
+class ResizableToolBar(QToolBar):
+    def __init__(self, title, parent=None):
+        super().__init__(title, parent)
+
+        self.setMouseTracking(True)
+        self.mousePressPos = None
+        self.mouseIsPressed = False
+        
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+
+
+    def mousePressEvent(self, event: QMouseEvent):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.mousePressPos = event.globalPosition()
+            self.mouseIsPressed = True
+
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        if self.mouseIsPressed:
+            diff = event.globalPosition() - self.mousePressPos
+            self.mousePressPos = event.globalPosition()
+
+            new_size = self.size() + QSize(diff.x(), diff.y())
+            self.resize(new_size)
+
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.mouseIsPressed = False
+
+        super().mouseReleaseEvent(event)
+
+
 
 class EditorDeOrganigramas(QMainWindow):
     
     def __init__(self):
         super().__init__()
-        # Set the window title and size
-        self.setWindowTitle("Editor De Organigramas")
-        self.setGeometry(100, 100, 400, 200)
-     
+        
+        self.central_widget = QTextEdit()
+        self.init_ui()
+        
+        # TEMP Unit tests TODO: REMOVE
         persona = Persona(codigo="1011", dependencia="202", nombre="Juan", apellido = "Perez")
         print(persona)
         print(persona.__repr__())
-        
         persona.salario = 100000000
         persona.codigo = "1233"
         
@@ -52,44 +102,112 @@ class EditorDeOrganigramas(QMainWindow):
             for hijo in nodo.children:
                 imprimir_arbol(hijo, nivel + 1)
 
+       
         imprimir_arbol(raiz)
-        print("Arbol guardado:\n")
+
+        
         #TODO: segmentar guardado de archivos
-        with open('arbol.dat', 'wb') as outf:
-            pickled = pickle.dumps(raiz, pickle.HIGHEST_PROTOCOL)
+        archivo : Archivo = Archivo()
+        archivo.raiz = raiz
+        
+        print("Archivo guardado:\n")
+        with open('archivo.dat', 'wb') as outf:
+            pickled = pickle.dumps(archivo, pickle.HIGHEST_PROTOCOL)
             optimized_pickle = pickletools.optimize(pickled)
             outf.write(optimized_pickle)
 
-        with open('arbol.dat', 'rb') as inf:
-            raiz = pickle.load(inf)
-            imprimir_arbol(raiz)
+        with open('archivo.dat', 'rb') as inf:
+            archivo = pickle.load(inf)
+            imprimir_arbol(archivo.raiz)
         
+        def compararCodigo(nodo : NodoArbol, codigo):
+            return nodo.data.codigo == codigo
+        print("Nodo encontrado:")
+        encontrado = raiz.buscar_nodo('005', compararCodigo)
+        print(encontrado)
+        print("Padre de encontrado:")
+        print(encontrado.padre(raiz))
+        
+        
+    def init_ui(self):
+        self.create_toolbar()
+        self.create_menu_bar()
+        self.create_status_bar()
+        self.set_central_widget()
 
+        self.setGeometry(300, 300, 800, 600)
+        self.setWindowTitle("Application")
+        self.show()
+        
+    def create_toolbar(self):
+        self.toolbar = ResizableToolBar("Properties", self)
 
-        # Create the widgets
-        self.label = QLabel("Nombre de organigrama:", self)
-        self.label.move(20, 20)
-        self.label.adjustSize()
- 
-        self.line_edit = QLineEdit(self)
-        self.line_edit.move(200, 20)
- 
-        self.button = QPushButton("Crear", self)
-        self.button.move(140, 70)
- 
-        self.result_label = QLabel(self)
-        self.result_label.setGeometry(30,80, 200,200)
- 
- 
-        # Connect the button to a method
-        self.button.clicked.connect(self.handle_button_click)
- 
-    def handle_button_click(self):
-        text = self.line_edit.text()
-        self.result_label.setText(f"Se creo organigrama: {text}!")
-        self.result_label.setFont(QFont("Times", 15))
-        self.result_label.setStyleSheet('color:red')
-    
+        label1 = QLabel("Property 1:")
+        label2 = QLabel("Property 2:")
+        text_field1 = QLineEdit()
+        text_field2 = QLineEdit()
+
+        self.toolbar.addWidget(label1)
+        self.toolbar.addWidget(text_field1)
+        self.toolbar.addSeparator()
+        self.toolbar.addWidget(label2)
+        self.toolbar.addWidget(text_field2)
+
+        self.addToolBar(Qt.ToolBarArea.RightToolBarArea, self.toolbar)
+
+    def create_menu_bar(self):
+        menu_bar = self.menuBar()
+
+        file_menu = menu_bar.addMenu("File")
+
+        action_open = QAction("Open", self)
+        action_save = QAction("Save", self)
+        action_exit = QAction("Exit", self)
+
+        file_menu.addAction(action_open)
+        file_menu.addAction(action_save)
+        file_menu.addAction(action_exit)
+
+        action_open.triggered.connect(self.open_file)
+        action_save.triggered.connect(self.save_file)
+        action_exit.triggered.connect(self.close)
+
+    def create_status_bar(self):
+        self.status_label = QLabel()
+        self.statusBar().addWidget(self.status_label)
+
+    def set_central_widget(self):
+        self.setCentralWidget(self.central_widget)
+
+        self.central_widget.setMouseTracking(True)  # Enable mouse tracking for central widget
+        self.central_widget.mouseMoveEvent = self.mouse_move_event
+        self.central_widget.mousePressEvent = self.mouse_press_event
+        self.central_widget.mouseReleaseEvent = self.mouse_release_event
+
+    def open_file(self):
+        # Functionality for opening a file
+        pass
+
+    def save_file(self):
+        # Functionality for saving a file
+        pass
+
+    def mouse_move_event(self, event):
+        # Handle mouse move event
+        pos = event.pos()
+        self.status_label.setText(f"Mouse position: ({pos.x()}, {pos.y()})")
+
+    def mouse_press_event(self, event):
+        # Handle mouse press event
+        pos = event.pos()
+        self.status_label.setText(f"Mouse clicked at: ({pos.x()}, {pos.y()})")
+
+    def mouse_release_event(self, event):
+        # Handle mouse release event
+        pos = event.pos()
+        self.status_label.setText(f"Mouse released at: ({pos.x()}, {pos.y()})")
+        #self.status_label.clear()
+        
     # TODO: Implementar
     def crearOrganigrama():
         pass
@@ -105,5 +223,5 @@ class EditorDeOrganigramas(QMainWindow):
 if __name__ == '__main__':
     app = QApplication([])
     window = EditorDeOrganigramas()
-    window.show()
+    window.showMaximized()
     app.exec()
