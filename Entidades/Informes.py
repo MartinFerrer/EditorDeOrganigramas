@@ -1,12 +1,15 @@
 from fpdf import FPDF
 import warnings
+from Arbol import *
+from Dependencia import *
+
 
 warnings.simplefilter('default', DeprecationWarning)
 
-pdf = FPDF()
-pdf.add_font('Calibri', '', r'C:\Users\hiros\OneDrive\Documentos\GitHub\EditorDeOrganigramas\Informes\fuentes\calibri.ttf')
-pdf.add_font('CalibriBold', '', r'C:\Users\hiros\OneDrive\Documentos\GitHub\EditorDeOrganigramas\Informes\fuentes\calibrib.ttf')
-pdf.add_font('CalibriItalic', '', r'C:\Users\hiros\OneDrive\Documentos\GitHub\EditorDeOrganigramas\Informes\fuentes\calibrii.ttf')
+pdf = FPDF('P', 'mm', 'A4')
+pdf.add_font('Calibri', '', r'.\Entidades\fuentes\calibri.ttf')
+pdf.add_font('CalibriBold', '', r'.\Entidades\fuentes\calibrib.ttf')
+pdf.add_font('CalibriItalic', '', r'.\Entidades\fuentes\calibrii.ttf')
 
 # TODO: Implementar
 class Informes:
@@ -15,8 +18,13 @@ class Informes:
     
     # TODO: Implementar
     def personalPorDependencia():
-        nomdep = (input("Inserte nombre de la dependencia: "))
+        # Hacer PDF de personas solo de una dependencia
+        nomdep = input("Inserte nombre de la dependencia: ")
+        if len(nomdep) > 25:
+            print("El nombre de la dependencia no puede tener más de 25 caracteres, inserte de nuevo.")
+            nomdep = input("Inserte nombre de la dependencia: ")
 
+        print(Dependencia.__str__)
 
         #crear dpf
         pdf.add_page()
@@ -31,7 +39,7 @@ class Informes:
         pdf.set_font('Calibri', '', size=28)
         pdf.write(txt=':\n')
         pdf.set_font('CalibriItalic', '', size = 20)
-        for i in range(5):
+        for i in range(len(nombre)):
             pdf.cell(0,20, f'{nombre[i]} {apellido[i]}')
             pdf.set_font('CalibriItalic', '', size = 15)
             pdf.write(txt=" \n\n")
@@ -40,18 +48,22 @@ class Informes:
         
     # TODO: Implementar
     def personalPorDependenciaExtendido():
+        # Hacer PDF de personas de la dependencia y sus hijos
         pass
     
     # TODO: Implementar
     def salarioPorDependencia():
+        # Hacer PDF de sueldo solo de un dependencia
         pass
     
     # TODO: Implementar
     def salarioPorDependenciaExtendido():
+        # Hacer PDF de sueldo de la dependencia y sus hijos
         pass
         
     # TODO: Implementar
     def imprimirOrganigrama():
+        #imprimir el grafico del organigrama completo
         pass
 
 
