@@ -17,7 +17,9 @@ from PyQt6.QtWidgets import (
     QSpacerItem,
     QHBoxLayout,
     QVBoxLayout,
-    QFrame)
+    QStackedLayout,
+    QFrame,
+    QStyleFactory)
 from PyQt6.QtCore import Qt, QPoint, QPointF, QSize, QTimer
 from PyQt6.QtGui import QFont, QAction, QMouseEvent, QWheelEvent
 from PyQt6.QtWidgets import (
@@ -170,7 +172,89 @@ class OrganizationalChartView(QGraphicsView):
                 v_line.setPen(QPen(Qt.GlobalColor.black))
                 self.scene().addItem(v_line)
 
+    
+    # TODO WORKING CODE 
+    # def draw_tree(self):
+    #     self.scene().clear()
 
+    #     # Calculate the available space
+    #     available_width = self.width()
+    #     available_height = self.height()
+
+    #     # Set margins
+    #     margin_x = 20
+    #     margin_y = 20
+
+    #     # Set initial node width and height
+    #     node_width = (available_width - 2 * margin_x) / 5
+    #     node_height = (available_height - 2 * margin_y) / 10
+
+    #     root_x = margin_x - (node_width / 2)
+    #     root_y = margin_y - (node_height / 2)
+
+    #     self.draw_node(self.root, root_x, root_y, node_width, node_height)
+        
+    # def draw_node(self, node: NodoArbol, x, y, width, height):
+    #     rect = QGraphicsRectItem(x, y, width, height)
+    #     rect.setPen(QPen(Qt.GlobalColor.black))
+    #     rect.setBrush(QColor(Qt.GlobalColor.lightGray))
+    #     self.scene().addItem(rect)
+
+    #     label = QGraphicsTextItem(node.data.nombre, rect)
+    #     label.setDefaultTextColor(QColor(Qt.GlobalColor.black))
+       
+    #     # Adjust the font size to fit within the node rectangle
+    #     font = label.font()
+    #     # TODO: opcion en el menu para poner el tamaño de texto maximo deseado
+    #     font.setPointSizeF(width * 1.5 / max(len(node.data.nombre), 1))  # Set initial font size dynamically
+    #     label.setFont(font)
+    #     # Decrease font size until the text fits within the available space or reaches the threshold
+    #     while label.boundingRect().width() > width - 10 or label.boundingRect().height() > height - 10:
+    #         if font.pointSizeF() - 1 > 0:
+    #             font.setPointSizeF(font.pointSizeF() - 1)
+    #             label.setFont(font)
+    #         else:
+    #             break
+    #     if font.pointSizeF() >= 7:
+    #         label.setPos(x + (width - label.boundingRect().width()) / 2, y + (height - label.boundingRect().height()) / 2)
+    #     else:
+    #         # Skip adding the label if the font size is less than 7
+    #         self.scene().removeItem(label)
+        
+    #     if node.children:
+    #         children_count = len(node.children)
+    #         children_width = width
+    #         children_height = height
+    #         children_spacing = 50
+    #         children_vertical_spacing = 100
+
+    #         total_children_width = children_count * children_width + (children_count - 1) * children_spacing
+    #         children_x = x + (width - total_children_width) / 2  # Center the children nodes horizontally
+    #         children_y = y + height + children_vertical_spacing
+
+    #         for i, child in enumerate(node.children):
+    #             child_x = children_x + (i * (children_width + children_spacing))  # Add spacing between the children nodes
+    #             self.draw_node(child, child_x, children_y, children_width, children_height)
+
+    #             parent_center = QPointF(x + (width / 2), y + height)
+    #             child_center = QPointF(child_x + (children_width / 2), children_y)
+
+    #             # Draw vertical line segment from parent to intermediate point
+    #             v_line = QGraphicsLineItem(parent_center.x(), parent_center.y(), parent_center.x(), child_center.y() - children_vertical_spacing / 3)
+    #             v_line.setPen(QPen(Qt.GlobalColor.black))
+    #             self.scene().addItem(v_line)
+
+    #             # Draw horizontal line segment from intermediate point to child
+    #             h_line = QGraphicsLineItem(parent_center.x(), child_center.y() - children_vertical_spacing / 3, child_center.x(), child_center.y() - children_vertical_spacing / 3)
+    #             h_line.setPen(QPen(Qt.GlobalColor.black))
+    #             self.scene().addItem(h_line)
+
+    #             # Draw vertical line segment from intermediate point to child
+    #             v_line = QGraphicsLineItem(child_center.x(), child_center.y() - children_vertical_spacing / 3, child_center.x(), child_center.y())
+    #             v_line.setPen(QPen(Qt.GlobalColor.black))
+    #             self.scene().addItem(v_line)
+
+            
 class OrganizationalChartWidget(QWidget):
     def __init__(self, root):
         super().__init__()
@@ -219,7 +303,155 @@ class ResizableToolBar(QToolBar):
 
         super().mouseReleaseEvent(event)
 
+class ZoomWidget(QWidget):
+    def __init__(self, target_widget, parent=None):
+        super().__init__(parent)
+        self.target_widget = target_widget
+        self.setup_ui()
 
+    def setup_ui(self):
+        #self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)  # Set transparent background
+
+        self.zoom_slider = QSlider(Qt.Orientation.Horizontal)
+        self.zoom_slider.setMinimum(0)
+        self.zoom_slider.setMaximum(200)
+        self.zoom_slider.setValue(100)
+        self.zoom_slider.setTickPosition(QSlider.TickPosition.NoTicks)
+        self.zoom_slider.setTickInterval(1)
+
+        self.zoom_slider.setSingleStep(1)
+        self.zoom_slider.setPageStep(1)
+        self.zoom_slider.setMaximumWidth(200)  # Adjust the maximum width here
+        self.zoom_slider.setFixedHeight(20) # Makes the slider the same height as the buttons
+
+        self.zoom_slider.valueChanged.connect(self.update_zoom)
+
+        self.zoom_percentage = QLabel("100%")
+        self.zoom_percentage.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.zoom_percentage.setStyleSheet("color: dimgrey; padding-bottom: 3.5px;")
+        self.zoom_percentage.setFixedWidth(30)  # Set a fixed width for the label that considers the max width of 100%
+             
+        container_widget = QWidget()
+
+        layout = QHBoxLayout(container_widget)
+        layout.setContentsMargins(0, 0, 10, 0)  # Set right margin
+        layout.setSpacing(0)  # Set spacing between items
+        layout.addStretch(1)  # Add stretch to align items to the right
+
+        
+        # TODO: Try QToolButton with autorepeat to simplify timer logic? (not worth maybe since this works already..)
+        button_style = """
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                text-align: center; /* Center-align the text */
+                padding-bottom: 3.5px; /* Adjust the padding to vertically center the text */
+                color: dimgrey;
+                font-size: 16px;
+            }
+            QPushButton:hover {
+                background-color: rgba(0, 0, 0, 40);
+            }
+        """
+
+        minus_button = QPushButton("－")
+        minus_button.setFixedSize(20, 20)
+        minus_button.setStyleSheet(button_style)
+        minus_button.pressed.connect(partial(self.start_zoom_timer, -10))
+        minus_button.released.connect(self.stop_zoom_timer)
+        minus_button.clicked.connect(partial(self.increment_zoom, -10))
+
+        plus_button = QPushButton("＋")
+        plus_button.setFixedSize(20, 20)
+        plus_button.setStyleSheet(button_style)
+        plus_button.pressed.connect(partial(self.start_zoom_timer, 10))
+        plus_button.released.connect(self.stop_zoom_timer)
+        plus_button.clicked.connect(partial(self.increment_zoom, 10))
+
+        self.zoom_timer = QTimer()
+        self.zoom_timer.setSingleShot(False)
+        self.zoom_timer.timeout.connect(self.handle_zoom_timer)
+
+        layout.addWidget(minus_button)
+        layout.addWidget(self.zoom_slider, 1)
+        layout.addWidget(plus_button)
+        layout.addWidget(self.zoom_percentage)
+        
+        self.setLayout(layout)
+                      
+    # Middle line of the slider widget to indicate the 100% mark
+    def paintEvent(self, event):
+        super().paintEvent(event)  # Call the base class paintEvent first
+        painter = QPainter(self)    
+        pen = QPen(QColor(215, 215, 215))
+        pen.setWidth(2) # Draw a line with width of 2 pixels
+        painter.setPen(pen)
+        
+        slider_rect_center = self.zoom_slider.geometry().center()
+        painter.drawLine(slider_rect_center.x(), slider_rect_center.y() - 7, 
+                         slider_rect_center.x(), slider_rect_center.y() + 7)
+        
+    def start_zoom_timer(self, step):
+        if not self.zoom_timer.isActive():
+            self.zoom_timer_step = step
+            self.zoom_timer_interval = 300  # Adjust the initial interval here
+            self.zoom_timer.setInterval(self.zoom_timer_interval)
+            self.zoom_timer.start()
+
+    def stop_zoom_timer(self):
+        if self.zoom_timer.isActive():
+            self.zoom_timer.stop()
+
+    def handle_zoom_timer(self):
+        if self.zoom_timer.interval() == 300:  # First invocation
+            self.zoom_timer_interval = 100  # Adjust the new interval here
+        self.increment_zoom(self.zoom_timer_step)
+
+    def increment_zoom(self, step=None):
+        # Cuando estamos manteniendo apretado el boton usar el timer
+        if step is None:
+            step = self.zoom_timer_step
+            
+        current_value = self.zoom_slider.value()
+        
+        # Redondear el valor incrementado/decrementado al valor mas cercano divisible por el step
+        if current_value % step == 0:
+            new_value = current_value + step
+        else:
+            new_value = math.ceil(current_value / step) * step
+       
+        new_value = max(0, min(200, new_value))
+        self.zoom_slider.setValue(new_value)
+
+        # Adjust the timer interval based on the duration the button is held down
+        self.zoom_timer_interval -= 20
+        self.zoom_timer_interval = max(30, self.zoom_timer_interval)
+        self.zoom_timer.setInterval(self.zoom_timer_interval)
+        
+    def update_zoom(self, value):
+        # Snap cuando el valor esta cerca de 100
+        if 90 < value < 110:    
+            value = 100
+            self.zoom_slider.setSliderPosition(100)
+        zoom_percentage = f"{value}%"
+        self.zoom_percentage.setText(zoom_percentage)
+        
+        if value == 100:
+            zoom_factor = 1.0
+        elif value < 100:
+            zoom_factor = 1.0 - (100 - value) / 200.0
+        else:
+            zoom_factor = 1.0 + (value - 100) / 100.0
+
+        self.target_widget.resetTransform()
+        self.target_widget.scale(zoom_factor, zoom_factor)       
+        
+    def updateOnScroll(self, event: QWheelEvent):
+        delta = event.angleDelta().y() / 120  # Get scroll wheel delta
+        step = 10  # Set the zoom step
+        zoom_value = self.zoom_slider.value()
+        new_zoom_value = max(0, min(200, zoom_value + (delta * step)))
+        self.zoom_slider.setValue(new_zoom_value)
 
 class EditorDeOrganigramas(QMainWindow):
     
@@ -344,140 +576,12 @@ class EditorDeOrganigramas(QMainWindow):
         self.create_menu_bar()
         self.create_status_bar()
         self.set_central_widget()
-        self.create_zoom_widget()  # Add the zoom widget
-
+    
         self.setGeometry(300, 300, 800, 600)
         self.setWindowTitle("Application")
         self.show()
-        
-    def create_zoom_widget(self):
-        self.zoom_slider = QSlider(Qt.Orientation.Horizontal)
-        self.zoom_slider.setMinimum(0)
-        self.zoom_slider.setMaximum(200)
-        self.zoom_slider.setValue(100)
-        self.zoom_slider.setTickPosition(QSlider.TickPosition.NoTicks)
-        self.zoom_slider.setTickInterval(1)
-
-        self.zoom_slider.setSingleStep(1)
-        self.zoom_slider.setPageStep(1)
-        self.zoom_slider.setMaximumWidth(200)  # Adjust the maximum width here
-        self.zoom_slider.valueChanged.connect(self.update_zoom)
-
-        self.zoom_percentage = QLabel("100%")
-        self.zoom_percentage.setAlignment(Qt.AlignmentFlag.AlignCenter)
-             
-        status_bar = self.statusBar()
-        status_bar.setSizeGripEnabled(False)
-
-        container_widget = QWidget(status_bar)
-
-        layout = QHBoxLayout(container_widget)
-        layout.setContentsMargins(0, 0, 20, 0)  # Set right margin
-        layout.setSpacing(5)  # Set spacing between items
-        layout.addStretch(1)  # Add stretch to align items to the right
-
-        button_style = """
-            QPushButton {
-                background-color: transparent;
-                border: none;
-            }
-            QPushButton:hover {
-                background-color: rgba(0, 0, 0, 20);
-            }
-        """
-
-        minus_button = QPushButton("-")
-        minus_button.setFixedSize(20, 20)
-        minus_button.setStyleSheet(button_style)
-        minus_button.pressed.connect(partial(self.start_zoom_timer, -10))
-        minus_button.released.connect(self.stop_zoom_timer)
-        minus_button.clicked.connect(partial(self.increment_zoom, -10))
-
-        plus_button = QPushButton("+")
-        plus_button.setFixedSize(20, 20)
-        plus_button.setStyleSheet(button_style)
-        plus_button.pressed.connect(partial(self.start_zoom_timer, 10))
-        plus_button.released.connect(self.stop_zoom_timer)
-        plus_button.clicked.connect(partial(self.increment_zoom, 10))
-
-        self.zoom_timer = QTimer()
-        self.zoom_timer.setSingleShot(False)
-        self.zoom_timer.timeout.connect(self.handle_zoom_timer)
-        
-        layout.addWidget(minus_button)
-        layout.addWidget(self.zoom_slider, 1) # Add stretch factor to zoom_slider
-        layout.addWidget(plus_button)
-        layout.addWidget(self.zoom_percentage)
-
-        status_bar.addPermanentWidget(container_widget)
-
-    def start_zoom_timer(self, step):
-        if not self.zoom_timer.isActive():
-            self.zoom_timer_step = step
-            self.zoom_timer_interval = 300  # Adjust the initial interval here
-            self.zoom_timer.setInterval(self.zoom_timer_interval)
-            self.zoom_timer.start()
-
-    def stop_zoom_timer(self):
-        if self.zoom_timer.isActive():
-            self.zoom_timer.stop()
-
-    def handle_zoom_timer(self):
-        if self.zoom_timer.interval() == 300:  # First invocation
-            self.zoom_timer_interval = 100  # Adjust the new interval here
-        self.increment_zoom(self.zoom_timer_step)
-
-    def increment_zoom(self, step=None):
-        # Cuando estamos manteniendo apretado el boton usar el timer
-        if step is None:
-            step = self.zoom_timer_step
-            
-        current_value = self.zoom_slider.value()
-        #new_value = max(0, min(200, current_value + step))
-        # Redondear el valor incrementado/decrementado al valor mas cercano divisible por el step TODO: FIX
-        if current_value % step == 0:
-            new_value = current_value + step
-        else:
-            new_value = math.ceil(current_value / step) * step
-       
-        new_value = max(0, min(200, new_value))
-        self.zoom_slider.setValue(new_value)
-
-        # Adjust the timer interval based on the duration the button is held down
-        self.zoom_timer_interval -= 20
-        self.zoom_timer_interval = max(30, self.zoom_timer_interval)
-        self.zoom_timer.setInterval(self.zoom_timer_interval)
-        
-    def update_zoom(self, value):
-        # Snap cuando el valor esta cerca de 100
-        if 90 < value < 110:    
-            value = 100
-        zoom_percentage = f"{value}%"
-        self.zoom_percentage.setText(zoom_percentage)
-        
-        if value == 100:
-            zoom_factor = 1.0
-        elif value < 100:
-            zoom_factor = 1.0 - (100 - value) / 200.0
-        else:
-            zoom_factor = 1.0 + (value - 100) / 100.0
-
-        self.central_widget.organizational_chart.resetTransform()
-        self.central_widget.organizational_chart.scale(zoom_factor, zoom_factor)        
+     
     
-    # Actualizar zoom al hacer ctrl + scrollwheel
-    def wheelEvent(self, event: QWheelEvent) -> None:
-        modifiers = QApplication.keyboardModifiers()
-        if modifiers == Qt.KeyboardModifier.ControlModifier:
-            delta = event.angleDelta().y() / 120  # Get scroll wheel delta
-            step = 10  # Set the zoom step
-            zoom_value = self.zoom_slider.value()
-            new_zoom_value = max(0, min(200, zoom_value + (delta * step)))
-            self.zoom_slider.setValue(new_zoom_value)
-        else:
-            # Perform default wheel event handling
-            super().wheelEvent(event)
-        
     def create_toolbar(self):
         self.toolbar = ResizableToolBar("Properties", self)
 
@@ -514,6 +618,9 @@ class EditorDeOrganigramas(QMainWindow):
     def create_status_bar(self):
         self.status_label = QLabel()
         self.statusBar().addWidget(self.status_label)
+        
+        self.zoom_widget = ZoomWidget(target_widget=self.central_widget.organizational_chart)
+        self.statusBar().addPermanentWidget(self.zoom_widget)
 
     def set_central_widget(self):
         self.setCentralWidget(self.central_widget)
@@ -531,7 +638,15 @@ class EditorDeOrganigramas(QMainWindow):
         # Functionality for saving a file
         pass
 
-            
+    def wheelEvent(self, event: QWheelEvent) -> None:
+        modifiers = QApplication.keyboardModifiers()
+        # Actualizar zoom al hacer ctrl + scrollwheel
+        if modifiers == Qt.KeyboardModifier.ControlModifier:
+            self.zoom_widget.updateOnScroll(event)
+        # Si no, usar comportamiento normal de scroll
+        else:
+            super().wheelEvent(event)
+                              
     def mouse_move_event(self, event):
         # Handle mouse move event
         pos = event.pos()
