@@ -1,4 +1,5 @@
 from functools import partial
+import numpy as np
 import math
 from PyQt6.QtWidgets import (
     QApplication, 
@@ -304,18 +305,19 @@ class ResizableToolBar(QToolBar):
         super().mouseReleaseEvent(event)
 
 class ZoomWidget(QWidget):
-    def __init__(self, target_widget, parent=None):
+    def __init__(self, target_widget: QGraphicsView, minimum_zoom: int = 10, maximum_zoom: int = 400, parent=None):
         super().__init__(parent)
         self.target_widget = target_widget
+        self.minimum_zoom = minimum_zoom
+        self.maximum_zoom = maximum_zoom
         self.setup_ui()
 
     def setup_ui(self):
-        #self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)  # Set transparent background
-
         self.zoom_slider = QSlider(Qt.Orientation.Horizontal)
-        self.zoom_slider.setMinimum(0)
-        self.zoom_slider.setMaximum(200)
-        self.zoom_slider.setValue(100)
+        self.zoom_slider.setMinimum(self.minimum_zoom)
+        self.zoom_slider.setMaximum(self.maximum_zoom)
+        self.middle_zoom = (self.minimum_zoom + self.maximum_zoom) / 2
+        self.zoom_slider.setSliderPosition(int(self.middle_zoom))
         self.zoom_slider.setTickPosition(QSlider.TickPosition.NoTicks)
         self.zoom_slider.setTickInterval(1)
 
@@ -329,7 +331,7 @@ class ZoomWidget(QWidget):
         self.zoom_percentage = QLabel("100%")
         self.zoom_percentage.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.zoom_percentage.setStyleSheet("color: dimgrey; padding-bottom: 3.5px;")
-        self.zoom_percentage.setFixedWidth(30)  # Set a fixed width for the label that considers the max width of 100%
+        self.zoom_percentage.setFixedWidth(100)  # Set a fixed width for the label that considers the max width of 100%
              
         container_widget = QWidget()
 
@@ -414,13 +416,37 @@ class ZoomWidget(QWidget):
             
         current_value = self.zoom_slider.value()
         
-        # Redondear el valor incrementado/decrementado al valor mas cercano divisible por el step
-        if current_value % step == 0:
-            new_value = current_value + step
+        # # TODO: Fix rounding of step by linearly mapping step on both sides of the middle_zoom value
+        # print(self.minimum_zoom, self.maximum_zoom, self.middle_zoom, step, current_value)
+
+        # Map the step with the different linear scales
+        print(current_value)
+        if current_value == self.middle_zoom:
+            if step < 0:
+                normalizer = (self.middle_zoom - self.minimum_zoom) / (100 - self.minimum_zoom)
+            else:
+                normalizer = (self.maximum_zoom - self.middle_zoom) / (self.maximum_zoom - 100)  
+            mapped_step = step * normalizer
+            mapped_step = round(mapped_step)
+        elif current_value < self.middle_zoom:
+            normalizer = (self.middle_zoom - self.minimum_zoom) / (100 - self.minimum_zoom)
+            mapped_step = step * normalizer
+            mapped_step = round(mapped_step)
         else:
-            new_value = math.ceil(current_value / step) * step
-       
-        new_value = max(0, min(200, new_value))
+            normalizer = (self.maximum_zoom - self.middle_zoom) / (self.maximum_zoom - 100) 
+            mapped_step = step * normalizer
+            mapped_step = round(mapped_step)
+        
+        print(f"Mapped step: {mapped_step}")
+        step = mapped_step
+        #Redondear el valor incrementado/decrementado al valor mas cercano divisible por el step
+        #if current_value % step == 0:
+        #    new_value = current_value + step
+        #else:
+        #    new_value = math.ceil(current_value / step) * step
+        
+        new_value = current_value + step
+        new_value = max(self.minimum_zoom, min(self.maximum_zoom, new_value))
         self.zoom_slider.setValue(new_value)
 
         # Adjust the timer interval based on the duration the button is held down
@@ -429,19 +455,26 @@ class ZoomWidget(QWidget):
         self.zoom_timer.setInterval(self.zoom_timer_interval)
         
     def update_zoom(self, value):
-        # Snap cuando el valor esta cerca de 100
-        if 90 < value < 110:    
-            value = 100
-            self.zoom_slider.setSliderPosition(100)
-        zoom_percentage = f"{value}%"
-        self.zoom_percentage.setText(zoom_percentage)
-        
-        if value == 100:
-            zoom_factor = 1.0
-        elif value < 100:
-            zoom_factor = 1.0 - (100 - value) / 200.0
+        #print(self.minimum_zoom, self.maximum_zoom, self.middle_zoom, value)
+                
+        if value <= self.middle_zoom:
+            #normalized = (value - self.minimum_zoom) / (self.middle_zoom - self.minimum_zoom)
+            #max = (1.0 - self.minimum_zoom / 100)
+            #mapped = max - normalized * max 
+            #zoom_factor = 1.0 - mapped
+            # # mapped = (1.0 - self.minimum_zoom / 100) * (1.0 - (value - self.minimum_zoom) / (self.middle_zoom - self.minimum_zoom))
+            zoom_factor = 1.0 - (1.0 - self.minimum_zoom / 100) * (1.0 - (value - self.minimum_zoom) / (self.middle_zoom - self.minimum_zoom))
         else:
-            zoom_factor = 1.0 + (value - 100) / 100.0
+            zoom_factor = 1.0 + (value - self.middle_zoom) / (self.maximum_zoom - self.middle_zoom) * (self.maximum_zoom / 100 - 1.0)
+
+        # Snap when the value is close to 100% zoom (middle of slider)
+        if 0.9 < zoom_factor < 1.1:    
+            value = self.middle_zoom
+            self.zoom_slider.setSliderPosition(int(self.middle_zoom))
+            zoom_factor = 1.0
+            
+        zoom_percentage = f"{round(zoom_factor * 100)}% factor: {zoom_factor:.4}"
+        self.zoom_percentage.setText(zoom_percentage)
 
         self.target_widget.resetTransform()
         self.target_widget.scale(zoom_factor, zoom_factor)       
@@ -450,7 +483,7 @@ class ZoomWidget(QWidget):
         delta = event.angleDelta().y() / 120  # Get scroll wheel delta
         step = 10  # Set the zoom step
         zoom_value = self.zoom_slider.value()
-        new_zoom_value = max(0, min(200, zoom_value + (delta * step)))
+        new_zoom_value = max(self.minimum_zoom, min(self.maximum_zoom , zoom_value + (delta * step)))
         self.zoom_slider.setValue(new_zoom_value)
 
 class EditorDeOrganigramas(QMainWindow):
