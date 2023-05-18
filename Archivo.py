@@ -2,6 +2,7 @@ from Entidades.Arbol import *
 from Entidades.Dependencia import *
 from Entidades.Organigrama import *
 from Entidades.Persona import *
+from Informes import *
 from random import randint
 
 # TODO: Implementar correctamente/completamente
@@ -152,3 +153,21 @@ class Archivo():
             if persona.dependencia == codigo_dependencia:
                 persona.dependencia = None        
 
+
+
+
+    raiz = NodoArbol(Dependencia(codigo='001', codigoResponsable='1234', nombre='Dependencia A'))
+        
+    hijo_1 = NodoArbol(Dependencia(codigo='002', codigoResponsable='5678', nombre='Dependencia B'))
+    hijo_2 = NodoArbol(Dependencia(codigo='003', codigoResponsable='9012', nombre='Dependencia C'))
+
+    nieto_1 = NodoArbol(Dependencia(codigo='004', codigoResponsable='3456', nombre='Dependencia D'))
+    nieto_2 = NodoArbol(Dependencia(codigo='005', codigoResponsable='7890', nombre='Dependencia E'))
+
+    raiz.agregar_hijo(hijo_1)
+    raiz.agregar_hijo(hijo_2)
+
+    hijo_1.agregar_hijo(nieto_1)
+    hijo_1.agregar_hijo(nieto_2)
+    
+    Informes.personalPorDependencia(dict)
