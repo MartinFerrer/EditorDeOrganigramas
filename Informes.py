@@ -1,15 +1,15 @@
 from fpdf import FPDF
 import warnings
-from Arbol import *
-from Dependencia import *
-
+from Entidades.Arbol import *
+from Entidades.Dependencia import *
+from Entidades.Persona import *
 
 warnings.simplefilter('default', DeprecationWarning)
 
 pdf = FPDF('P', 'mm', 'A4')
-pdf.add_font('Calibri', '', r'.\Entidades\fuentes\calibri.ttf')
-pdf.add_font('CalibriBold', '', r'.\Entidades\fuentes\calibrib.ttf')
-pdf.add_font('CalibriItalic', '', r'.\Entidades\fuentes\calibrii.ttf')
+pdf.add_font('Calibri', '', r'.\fuentes\calibri.ttf')
+pdf.add_font('CalibriBold', '', r'.\fuentes\calibrib.ttf')
+pdf.add_font('CalibriItalic', '', r'.\fuentes\calibrii.ttf')
 
 # TODO: Implementar
 class Informes:
@@ -23,15 +23,16 @@ class Informes:
         if len(nomdep) > 25:
             print("El nombre de la dependencia no puede tener más de 25 caracteres, inserte de nuevo.")
             nomdep = input("Inserte nombre de la dependencia: ")
+        
+        
 
-        print(Dependencia.__str__)
 
         #crear dpf
         pdf.add_page()
         pdf.set_font('CalibriBold', '', size=30)
         pdf.cell(0, 20, f'Dependencia: {nomdep}')
         nombre = ['Martin', 'Hiroto', 'Javier', 'Ivan', 'Fabrizio']
-        apellido = ['Ferrer', 'Yamashita', 'Goto', 'Figueredo', 'Kawabata']
+        apellido = ['Cano', 'Yamashita', 'Goto', 'Figueredo', 'Kawabata']
         
         pdf.write(txt="\n\n")
         pdf.set_font('Calibri', 'U' ,size=28)
