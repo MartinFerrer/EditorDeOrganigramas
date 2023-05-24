@@ -13,10 +13,13 @@ class Dependencia(param.Parameterized):
 
     nombre: str = param.String(None, regex="^.{0,20}$")
     """Nombre de la dependencia (hasta 20 caracteres)"""
-   
+
     # Representacion accessible para el usuario (#TODO: posiblemente remover si vamos a tener todo
     # en interfaz grafica)
     def __str__(self):
         return f"Dependencia: {self.nombre}, Código: {self.codigo}, Responsable: {self.codigoResponsable}"
     
-    # TODO: Generar codigo unico entre 0 y 999
+    
+
+
+        
