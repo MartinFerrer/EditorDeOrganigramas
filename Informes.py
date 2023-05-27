@@ -5,6 +5,7 @@ from Entidades.Dependencia import *
 from Entidades.Persona import *
 from Archivo import *
 
+
 warnings.simplefilter('default', DeprecationWarning)
 
 
@@ -53,11 +54,13 @@ class Informes:
 
         # Guardar el archivo
         pdf.output("Personal por Dependencia.pdf")
-        
-    # TODO: Implementar
-    def personalPorDependenciaExtendido(self, nodo: NodoArbol):
-        # Hacer PDF de personas de la dependencia y sus hijos
-        pass
+
+    def personalPorDependenciaExtendido(self, nodo_actual: NodoArbol):
+        if nodo_actual.children is not None:
+            for i in range(len(nodo_actual.children)):
+                self.personalPorDependencia(nodo_actual.data)
+                self.personalPorDependenciaExtendido(nodo_actual.children[i])
+
     
     # TODO: Implementar
     def salarioPorDependencia(self, dependencia: Dependencia):
@@ -95,6 +98,6 @@ class Informes:
         pass
         
     # TODO: Implementar
-    def imprimirOrganigrama():
+    def imprimirOrganigrama(self):
         #imprimir el grafico del organigrama completo
         pass
