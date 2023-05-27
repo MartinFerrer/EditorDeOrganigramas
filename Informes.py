@@ -7,10 +7,7 @@ from Archivo import *
 
 warnings.simplefilter('default', DeprecationWarning)
 
-pdf = FPDF('P', 'mm', 'A4')
-pdf.add_font('Calibri', '', r'.\fuentes\calibri.ttf')
-pdf.add_font('CalibriBold', '', r'.\fuentes\calibrib.ttf')
-pdf.add_font('CalibriItalic', '', r'.\fuentes\calibrii.ttf')
+
 
 # TODO: Implementar
 class Informes:
@@ -24,6 +21,10 @@ class Informes:
         """
 
         # Crear PDF
+        pdf = FPDF('P', 'mm', 'A4')
+        pdf.add_font('Calibri', '', r'.\fuentes\calibri.ttf')
+        pdf.add_font('CalibriBold', '', r'.\fuentes\calibrib.ttf')
+        pdf.add_font('CalibriItalic', '', r'.\fuentes\calibrii.ttf')
         pdf.add_page()
 
         # Imprimir nombre de dependencia
@@ -61,21 +62,28 @@ class Informes:
     # TODO: Implementar
     def salarioPorDependencia(self, dependencia: Dependencia):
         # Crear PDF
+        pdf = FPDF('P', 'mm', 'A4')
+        pdf.add_font('Calibri', '', r'.\fuentes\calibri.ttf')
+        pdf.add_font('CalibriBold', '', r'.\fuentes\calibrib.ttf')
+        pdf.add_font('CalibriItalic', '', r'.\fuentes\calibrii.ttf')
         pdf.add_page()
 
         # Imprimir nombre de dependencia
         pdf.set_font('CalibriBold', '', size=30)
         pdf.cell(0, 20, f'Dependencia: {dependencia.nombre}')
+        
 
         # Imprimir Cantidad de empleados y Suma de salarios
+        pdf.write(txt="\n\n")
         pdf.set_font('CalibriItalic', '', size = 20)
         salarios = []
         for persona in self.archivo.personasPorCodigo.values():
             if persona.dependencia == dependencia.codigo:
-                 salarios.append(f"{persona.salario}")       
+                 salarios.append(persona.salario)   
         cantempdep = len(salarios)
         sumsueldep = sum(salarios)
         pdf.cell(0,20, f'Cantidad de personas: {cantempdep}')
+        pdf.write(txt="\n\n")
         pdf.cell(0,20, f'Sueldo de la dependencia: {sumsueldep}')
 
         # Guardar el archivo
