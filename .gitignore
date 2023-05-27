@@ -33,3 +33,5 @@ coverage.xml
 
 # Data file
 *.dat
+*.pdf
+*.png
