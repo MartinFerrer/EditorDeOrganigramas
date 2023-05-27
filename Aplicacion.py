@@ -1,10 +1,12 @@
 from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QPushButton
 from PyQt6.QtGui import QFont
 import pickle, pickletools
+import datetime
 
 from Entidades.Arbol import *
 from Entidades.Persona import *
 from Entidades.Dependencia import *
+from Archivo import *
 
 class EditorDeOrganigramas(QMainWindow):
     
@@ -13,14 +15,23 @@ class EditorDeOrganigramas(QMainWindow):
         # Set the window title and size
         self.setWindowTitle("Editor De Organigramas")
         self.setGeometry(100, 100, 400, 200)
-     
+        self.archivos = self.leer_archivo('archivos.dat', datos = None)
+        print(self.archivos)
+        print(type(self.archivos))
         persona = Persona(codigo="1011", dependencia="202", nombre="Juan", apellido = "Perez")
         print(persona)
         print(persona.__repr__())
         
         persona.salario = 100000000
-        persona.codigo = "1233"
-        
+        persona.codigo = "1233"  
+        '''
+        fecha = datetime.now()
+        self.crearOrganigrama(self.lista_cod, 'Hola', fecha)
+        self.crearOrganigrama(self.lista_cod, 'Chau', fecha)
+        print(self.lista_cod)
+        print(self.archivos)
+        print(self.archivos[-1].organigrama)
+        '''
         #TODO: segmentar guardado de archivos
         with open('data.dat', 'wb') as outf:
             pickled = pickle.dumps(persona, pickle.HIGHEST_PROTOCOL)
@@ -64,8 +75,16 @@ class EditorDeOrganigramas(QMainWindow):
             raiz = pickle.load(inf)
             imprimir_arbol(raiz)
         
+        '''lista_temp = ['00001', '00002', '00003']
+        with open ('archivos.dat', 'wb') as outcodigof:
+            pickled = pickle.dumps(lista_temp, pickle.HIGHEST_PROTOCOL)
+            optimized_pickle = pickletools.optimize(pickled)
+            outcodigof.write(optimized_pickle)
 
-
+        with open ('archivos.dat', 'rb') as initf:
+            lista_nueva = pickle.load(initf)
+            print(lista_nueva)
+        '''
         # Create the widgets
         self.label = QLabel("Nombre de organigrama:", self)
         self.label.move(20, 20)
@@ -90,9 +109,28 @@ class EditorDeOrganigramas(QMainWindow):
         self.result_label.setFont(QFont("Times", 15))
         self.result_label.setStyleSheet('color:red')
     
+    def escribir_archivo (self, nombre_archivo, datos):
+        with open (nombre_archivo, 'wb') as outf:
+            pickled = pickle.dumps(datos, pickle.HIGHEST_PROTOCOL)
+            optimized_pickle = pickletools.optimize(pickled)
+            outf.write(optimized_pickle)
+
+    def leer_archivo (self, nombre_archivo, datos):
+        with open (nombre_archivo, 'rb') as inf:
+            datos = pickle.load(inf)
+        return datos
+
     # TODO: Implementar
-    def crearOrganigrama():
-        pass
+    def crearOrganigrama(self, nombre, fecha):
+        cod = 0
+        while str(cod).zfill(5) in self.archivos.keys():
+            cod += 1
+        nuevo = Archivo()
+        nuevo.organigrama.codigo = str(cod).zfill(5)
+        nuevo.organigrama.organizacion = nombre
+        nuevo.organigrama.fecha = fecha
+        self.archivos[str(cod).zfill(5)] = nuevo
+        self.escribir_archivo('archivos.dat', self.archivos)
     
     # TODO: Implementar
     def abrirOrganigrama():
@@ -101,9 +139,9 @@ class EditorDeOrganigramas(QMainWindow):
     # TODO: Implementar
     def copiarOrganigrama():
         pass
- 
+
 if __name__ == '__main__':
     app = QApplication([])
     window = EditorDeOrganigramas()
-    window.show()
+    window.show()   
     app.exec()
