@@ -45,10 +45,10 @@ class Informes:
                  nombres.append(f"{persona.apellido} {persona.nombre}")       
         nombres.sort()
         for nombre in nombres:
-                pdf.cell(0,20, nombre)
-                pdf.set_font('CalibriItalic', '', size = 15)
-                pdf.write(txt=" \n\n")
-                pdf.set_font('CalibriItalic', '', size = 20)
+            pdf.cell(0,20, nombre)
+            pdf.set_font('CalibriItalic', '', size = 15)
+            pdf.write(txt=" \n\n")
+            pdf.set_font('CalibriItalic', '', size = 20)
 
         # Guardar el archivo
         pdf.output("Personal por Dependencia.pdf")
@@ -60,8 +60,26 @@ class Informes:
     
     # TODO: Implementar
     def salarioPorDependencia(self, dependencia: Dependencia):
-        # Hacer PDF de sueldo solo de un dependencia
-        pass
+        # Crear PDF
+        pdf.add_page()
+
+        # Imprimir nombre de dependencia
+        pdf.set_font('CalibriBold', '', size=30)
+        pdf.cell(0, 20, f'Dependencia: {dependencia.nombre}')
+
+        # Imprimir Cantidad de empleados y Suma de salarios
+        pdf.set_font('CalibriItalic', '', size = 20)
+        salarios = []
+        for persona in self.archivo.personasPorCodigo.values():
+            if persona.dependencia == dependencia.codigo:
+                 salarios.append(f"{persona.salario}")       
+        cantempdep = len(salarios)
+        sumsueldep = sum(salarios)
+        pdf.cell(0,20, f'Cantidad de personas: {cantempdep}')
+        pdf.cell(0,20, f'Sueldo de la dependencia: {sumsueldep}')
+
+        # Guardar el archivo
+        pdf.output("SalarioPorDependencia.pdf")
     
     # TODO: Implementar
     def salarioPorDependenciaExtendido(self, nodo: NodoArbol):
