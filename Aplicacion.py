@@ -331,7 +331,7 @@ class ZoomWidget(QWidget):
         self.zoom_percentage = QLabel("100%")
         self.zoom_percentage.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.zoom_percentage.setStyleSheet("color: dimgrey; padding-bottom: 3.5px;")
-        self.zoom_percentage.setFixedWidth(100)  # Set a fixed width for the label that considers the max width of 100%
+        self.zoom_percentage.setFixedWidth(30)  # Set a fixed width for the label that considers the max width of 100%
              
         container_widget = QWidget()
 
@@ -420,37 +420,36 @@ class ZoomWidget(QWidget):
         # print(self.minimum_zoom, self.maximum_zoom, self.middle_zoom, step, current_value)
 
         # Map the step with the different linear scales
-        print(current_value)
+        #print(current_value)
         if current_value == self.middle_zoom:
             if step < 0:
                 normalizer = (self.middle_zoom - self.minimum_zoom) / (100 - self.minimum_zoom)
             else:
-                normalizer = (self.maximum_zoom - self.middle_zoom) / (self.maximum_zoom - 100)  
-            mapped_step = step * normalizer
-            mapped_step = round(mapped_step)
+                normalizer = (self.maximum_zoom - self.middle_zoom) / (self.maximum_zoom - 100)
         elif current_value < self.middle_zoom:
             normalizer = (self.middle_zoom - self.minimum_zoom) / (100 - self.minimum_zoom)
-            mapped_step = step * normalizer
-            mapped_step = round(mapped_step)
         else:
             normalizer = (self.maximum_zoom - self.middle_zoom) / (self.maximum_zoom - 100) 
-            mapped_step = step * normalizer
-            mapped_step = round(mapped_step)
         
-        print(f"Mapped step: {mapped_step}")
-        step = mapped_step
+        step = step * normalizer
+        step = round(step)
+        #print(f"Mapped step: {mapped_step}")
+                
+        # TODO: volver a hacer que funcione el redondeo?
         #Redondear el valor incrementado/decrementado al valor mas cercano divisible por el step
-        #if current_value % step == 0:
+        # if current_value % step == 0:
+        #    print(f"{current_value} is an even 10% step")
         #    new_value = current_value + step
-        #else:
+        # else:
         #    new_value = math.ceil(current_value / step) * step
+        #    print(f"{current_value} got rounded to {new_value} with step {step}")
         
         new_value = current_value + step
         new_value = max(self.minimum_zoom, min(self.maximum_zoom, new_value))
         self.zoom_slider.setValue(new_value)
 
         # Adjust the timer interval based on the duration the button is held down
-        self.zoom_timer_interval -= 20
+        self.zoom_timer_interval -= 10
         self.zoom_timer_interval = max(30, self.zoom_timer_interval)
         self.zoom_timer.setInterval(self.zoom_timer_interval)
         
@@ -463,17 +462,18 @@ class ZoomWidget(QWidget):
             #mapped = max - normalized * max 
             #zoom_factor = 1.0 - mapped
             # # mapped = (1.0 - self.minimum_zoom / 100) * (1.0 - (value - self.minimum_zoom) / (self.middle_zoom - self.minimum_zoom))
-            zoom_factor = 1.0 - (1.0 - self.minimum_zoom / 100) * (1.0 - (value - self.minimum_zoom) / (self.middle_zoom - self.minimum_zoom))
+            zoom_factor = 1.0 - (1.0 - (value - self.minimum_zoom) / (self.middle_zoom - self.minimum_zoom)) * (1.0 - self.minimum_zoom / 100)
         else:
             zoom_factor = 1.0 + (value - self.middle_zoom) / (self.maximum_zoom - self.middle_zoom) * (self.maximum_zoom / 100 - 1.0)
 
         # Snap when the value is close to 100% zoom (middle of slider)
-        if 0.9 < zoom_factor < 1.1:    
+        if 0.9 < zoom_factor < 1.09:    
             value = self.middle_zoom
             self.zoom_slider.setSliderPosition(int(self.middle_zoom))
             zoom_factor = 1.0
             
-        zoom_percentage = f"{round(zoom_factor * 100)}% factor: {zoom_factor:.4}"
+        #zoom_percentage = f"{round(zoom_factor * 100)}% factor: {zoom_factor:.4}"
+        zoom_percentage = f"{round(zoom_factor * 100)}%"
         self.zoom_percentage.setText(zoom_percentage)
 
         self.target_widget.resetTransform()
@@ -529,11 +529,11 @@ class EditorDeOrganigramas(QMainWindow):
 
         hijo_1.agregar_hijo(nieto_1)
         hijo_1.agregar_hijo(nieto_2)
-        hijo_2.agregar_hijo(nieto_3)
-       # hijo_2.agregar_hijo(nieto_4)
-        #hijo_3.agregar_hijo(nieto_5)
-        #hijo_3.agregar_hijo(nieto_6)
-        
+        #hijo_2.agregar_hijo(nieto_3)
+        #hijo_2.agregar_hijo(nieto_4)
+        hijo_3.agregar_hijo(nieto_5)
+        hijo_3.agregar_hijo(nieto_6)
+        hijo_3.agregar_hijo(nieto_3)
         # Imprimir la estructura del árbol
         def imprimir_arbol(nodo, nivel=0):
             print('  ' * nivel + '- ' + str(nodo))
