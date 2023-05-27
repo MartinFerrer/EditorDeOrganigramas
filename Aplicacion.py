@@ -44,7 +44,7 @@ from Entidades.Arbol import *
 from Entidades.Persona import *
 from Entidades.Dependencia import *
 from Archivo import *
-
+from Informes import *
 
 
 class OrganizationalChartView(QGraphicsView):
@@ -504,13 +504,12 @@ class EditorDeOrganigramas(QMainWindow):
         # Imprimir la estructura del árbol
         def imprimir_arbol(nodo, nivel=0):
             print('  ' * nivel + '- ' + str(nodo))
-            for hijo in nodo.children:
+            for hijo in nodo.children:  
                 imprimir_arbol(hijo, nivel + 1)
 
        
         imprimir_arbol(raiz)
 
-        
         #TODO: segmentar guardado de archivos
         archivo : Archivo = Archivo()
         archivo.raiz = raiz
@@ -538,6 +537,35 @@ class EditorDeOrganigramas(QMainWindow):
         
         QTimer.singleShot(1000, self.saveScreenshot)
         QTimer.singleShot(1000, self.save_chart_as_png)
+
+        persona1 = Persona(codigo="1011", dependencia="002", nombre="Juan", apellido = "Perez")
+        persona2 = Persona(codigo="1012", dependencia="002", nombre="Pedro", apellido = "Pascal")
+        persona3 = Persona(codigo="1013", dependencia="002", nombre="Poroto", apellido = "Manteca")
+        persona4 = Persona(codigo="1014", dependencia="002", nombre="El", apellido = "Ivan")
+        persona5 = Persona(codigo="1015", dependencia="002", nombre="Fabrizio", apellido = "K")
+        persona6 = Persona(codigo="1016", dependencia="004", nombre="Martin", apellido = "F")
+        persona7 = Persona(codigo="1017", dependencia="004", nombre="Javier", apellido = "G")
+        persona8 = Persona(codigo="1018", dependencia="008", nombre="Filippi", apellido = "Profe")
+        persona9 = Persona(codigo="1019", dependencia="009", nombre="Ivan", apellido = "Aux")
+        persona10 = Persona(codigo="1020", dependencia="010", nombre="Jhonny", apellido = "Test")
+        archivo.personasPorCodigo[persona1.codigo] = persona1
+        archivo.personasPorCodigo[persona2.codigo] = persona2
+        archivo.personasPorCodigo[persona3.codigo] = persona3
+        archivo.personasPorCodigo[persona4.codigo] = persona4
+        archivo.personasPorCodigo[persona5.codigo] = persona5
+        archivo.personasPorCodigo[persona6.codigo] = persona6
+        archivo.personasPorCodigo[persona7.codigo] = persona7
+        archivo.personasPorCodigo[persona8.codigo] = persona8
+        archivo.personasPorCodigo[persona9.codigo] = persona9
+        archivo.personasPorCodigo[persona10.codigo] = persona10
+
+        informador = Informes(archivo)
+        # Informes
+        informador.personalPorDependencia(hijo_1.data)
+        informador.personalPorDependenciaExtendido(raiz)
+        informador.salarioPorDependencia(hijo_1.data)
+        informador.salarioPorDependenciaExtendido(raiz)
+
 
 
         
