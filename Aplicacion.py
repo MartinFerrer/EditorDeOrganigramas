@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QPushB
 from PyQt6.QtGui import QFont
 import pickle, pickletools
 import datetime
+import os
 
 from Entidades.Arbol import *
 from Entidades.Persona import *
@@ -15,7 +16,13 @@ class EditorDeOrganigramas(QMainWindow):
         # Set the window title and size
         self.setWindowTitle("Editor De Organigramas")
         self.setGeometry(100, 100, 400, 200)
-        self.archivos = self.leer_archivo('archivos.dat', datos = None)
+        self.archivos = {}
+        self.ruta = os.getcwd() + '\Archivos'
+        for file in os.listdir(self.ruta):
+            temp : Archivo = self.leer_archivo(file, datos = None)
+            if temp != None:
+                self.archivos[temp.organigrama.codigo] = temp
+        
         print(self.archivos)
         print(type(self.archivos))
         persona = Persona(codigo="1011", dependencia="202", nombre="Juan", apellido = "Perez")
@@ -24,14 +31,14 @@ class EditorDeOrganigramas(QMainWindow):
         
         persona.salario = 100000000
         persona.codigo = "1233"  
-        '''
+
         fecha = datetime.now()
-        self.crearOrganigrama(self.lista_cod, 'Hola', fecha)
-        self.crearOrganigrama(self.lista_cod, 'Chau', fecha)
-        print(self.lista_cod)
+        self.crearOrganigrama('Hola', fecha)
         print(self.archivos)
-        print(self.archivos[-1].organigrama)
-        '''
+        self.crearOrganigrama('Chau', fecha)
+        print(self.archivos)
+        temp = self.leer_archivo()
+        
         #TODO: segmentar guardado de archivos
         with open('data.dat', 'wb') as outf:
             pickled = pickle.dumps(persona, pickle.HIGHEST_PROTOCOL)
@@ -117,7 +124,8 @@ class EditorDeOrganigramas(QMainWindow):
 
     def leer_archivo (self, nombre_archivo, datos):
         with open (nombre_archivo, 'rb') as inf:
-            datos = pickle.load(inf)
+            if os.path.getsize(nombre_archivo) != 0:
+                datos = pickle.load(inf)
         return datos
 
     # TODO: Implementar
@@ -130,7 +138,9 @@ class EditorDeOrganigramas(QMainWindow):
         nuevo.organigrama.organizacion = nombre
         nuevo.organigrama.fecha = fecha
         self.archivos[str(cod).zfill(5)] = nuevo
-        self.escribir_archivo('archivos.dat', self.archivos)
+        nombre_archivo = self.ruta + '\org_' + nuevo.organigrama.codigo + '.dat'
+        print(nombre_archivo)
+        self.escribir_archivo(nombre_archivo, nuevo)
     
     # TODO: Implementar
     def abrirOrganigrama():
