@@ -2,6 +2,7 @@ from Entidades.Arbol import *
 from Entidades.Dependencia import *
 from Entidades.Organigrama import *
 from Entidades.Persona import *
+from Informes import *
 from random import randint
 
 # TODO: Implementar correctamente/completamente
@@ -169,3 +170,4 @@ class Archivo():
     hijo_1.agregar_hijo(nieto_1)
     hijo_1.agregar_hijo(nieto_2)
     
+    Informes.personalPorDependencia(dict)
