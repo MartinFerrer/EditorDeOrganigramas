@@ -1,6 +1,7 @@
 from functools import partial
 import numpy as np
 import math
+import graphviz
 from PyQt6.QtWidgets import (
     QApplication, 
     QMainWindow, 
@@ -22,17 +23,22 @@ from PyQt6.QtWidgets import (
     QFrame,
     QStyleFactory)
 from PyQt6.QtCore import Qt, QPoint, QPointF, QSize, QTimer
-from PyQt6.QtGui import QFont, QAction, QMouseEvent, QWheelEvent
+from PyQt6.QtGui import QAction, QMouseEvent, QWheelEvent
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, 
     QWidget, QVBoxLayout, 
     QGraphicsScene, QGraphicsView, 
-    QGraphicsRectItem, QGraphicsTextItem, QGraphicsLineItem)
+    QGraphicsRectItem, QGraphicsTextItem, QGraphicsLineItem, QGraphicsPixmapItem)
 from PyQt6.QtCore import Qt, QRectF, QEvent
-from PyQt6.QtGui import QColor, QPen, QPainter, QPixmap
+from PyQt6.QtGui import QFont, QColor, QPen, QPainter, QPixmap, QImage
+from PyQt6.QtSvg import QSvgRenderer
+from PyQt6.QtSvgWidgets import QGraphicsSvgItem
+
 
 import pickle, pickletools
 import time
+import sys
+import os
 
 from Entidades.Arbol import *
 from Entidades.Persona import *
@@ -96,83 +102,44 @@ class OrganizationalChartView(QGraphicsView):
         root_x = margin_x - (node_width / 2)
         root_y = margin_y - (node_height / 2)
 
-        level_counts = []  # Number of nodes at each level
-        self.calculate_level_counts(self.root, 0, level_counts)  # Calculate the counts recursively
-        print(level_counts)
-        self.draw_node(self.root, root_x, root_y, node_width, node_height, level_counts, 0)
+        self.draw_node(self.root, root_x, root_y, node_width, node_height)
 
-    def calculate_level_counts(self, node, level, level_counts):
-        if level >= len(level_counts):
-            level_counts.append(0)
-        level_counts[level] += 1
+    def draw_tree(self):
+        self.scene().clear()
 
-        for child in node.children:
-            self.calculate_level_counts(child, level + 1, level_counts)
+        # Generate the Graphviz graph
+        dot = graphviz.Digraph(format='svg')
+        self.draw_node(dot, self.root)
 
-    def draw_node(self, node: NodoArbol, x, y, width, height, level_counts, current_level):
-        rect = QGraphicsRectItem(x, y, width, height)
-        rect.setPen(QPen(Qt.GlobalColor.black))
-        rect.setBrush(QColor(Qt.GlobalColor.lightGray))
-        self.scene().addItem(rect)
+        # Set graph attributes for layout
+        dot.graph_attr.update(
+            splines='ortho', 
+            rankdir='TB',)
+    
+        # Render the graph as SVG string
+        svg_bytes = dot.pipe().decode('utf-8')
 
-        label = QGraphicsTextItem(node.data.nombre, rect)
-        label.setDefaultTextColor(QColor(Qt.GlobalColor.black))
-       
-        # Adjust the font size to fit within the node rectangle
-        font = label.font()
-        # TODO: opcion en el menu para poner el tamaño de texto maximo deseado
-        font.setPointSizeF(width * 1.5 / max(len(node.data.nombre), 1))  # Set initial font size dynamically
-        label.setFont(font)
-        # Decrease font size until the text fits within the available space or reaches the threshold
-        while label.boundingRect().width() > width - 10 or label.boundingRect().height() > height - 10:
-            if font.pointSizeF() - 1 > 0:
-                font.setPointSizeF(font.pointSizeF() - 1)
-                label.setFont(font)
-            else:
-                break
-        if font.pointSizeF() >= 7:
-            label.setPos(x + (width - label.boundingRect().width()) / 2, y + (height - label.boundingRect().height()) / 2)
-        else:
-            # Skip adding the label if the font size is less than 7
-            self.scene().removeItem(label)
+        # Load the SVG string and draw it in the QGraphicsScene
+        svg_item = QGraphicsSvgItem()
+        renderer = QSvgRenderer(svg_bytes.encode('utf-8'))
+        svg_item.setSharedRenderer(renderer)
+        svg_item.renderer().load(svg_bytes.encode('utf-8'))
+        self.scene().addItem(svg_item)
         
-        if node.children:
-            # TODO: Remove level_counts, no va servir simplemente, se puede tener 3 nodos en un nivel de varias maneras distintas
-            # en algunas se van a solapar nodos y en otros no, en vez deberiamos desplazar dinamicamente o simplemente buscar los 
-            # vecinos inmediatos al nodo para ajustar el espacio
-            print(current_level, level_counts[current_level + 1])
-            children_count = len(node.children)
-            children_width = width
-            children_height = height
-            children_spacing = 50
-            children_vertical_spacing = 100
+        
+    def draw_node(self, dot, node):
+        if node is None:
+            return
 
-            total_children_width = children_count * children_width + (children_count - 1) * children_spacing
-            children_x = x + (width - total_children_width) / 2  # Center the children nodes horizontally
-            children_y = y + height + children_vertical_spacing
+        # Add the node to the graph
+        dot.node(str(id(node)), label=str(node.data), shape="rectangle")
 
-            for i, child in enumerate(node.children):
-                child_x = children_x + (i * (children_width + children_spacing))  # Add spacing between the children nodes
-                self.draw_node(child, child_x, children_y, children_width, children_height, level_counts, current_level + 1)
-
-                parent_center = QPointF(x + (width / 2), y + height)
-                child_center = QPointF(child_x + (children_width / 2), children_y)
-
-                # Draw vertical line segment from parent to intermediate point
-                v_line = QGraphicsLineItem(parent_center.x(), parent_center.y(), parent_center.x(), child_center.y() - children_vertical_spacing / 3)
-                v_line.setPen(QPen(Qt.GlobalColor.black))
-                self.scene().addItem(v_line)
-
-                # Draw horizontal line segment from intermediate point to child
-                h_line = QGraphicsLineItem(parent_center.x(), child_center.y() - children_vertical_spacing / 3, child_center.x(), child_center.y() - children_vertical_spacing / 3)
-                h_line.setPen(QPen(Qt.GlobalColor.black))
-                self.scene().addItem(h_line)
-
-                # Draw vertical line segment from intermediate point to child
-                v_line = QGraphicsLineItem(child_center.x(), child_center.y() - children_vertical_spacing / 3, child_center.x(), child_center.y())
-                v_line.setPen(QPen(Qt.GlobalColor.black))
-                self.scene().addItem(v_line)
-
+        # Recursively add nodes for each child node
+        for child in node.children:
+            self.draw_node(dot, child)
+            # Add the edge from the parent to the child
+            dot.edge(str(id(node)), str(id(child)), arrowhead='none', arrowtail='none', dir='none')
+            
     
     # TODO WORKING CODE 
     # def draw_tree(self):
@@ -529,11 +496,11 @@ class EditorDeOrganigramas(QMainWindow):
 
         hijo_1.agregar_hijo(nieto_1)
         hijo_1.agregar_hijo(nieto_2)
-        #hijo_2.agregar_hijo(nieto_3)
-        #hijo_2.agregar_hijo(nieto_4)
+        hijo_2.agregar_hijo(nieto_3)
+        hijo_2.agregar_hijo(nieto_4)
         hijo_3.agregar_hijo(nieto_5)
         hijo_3.agregar_hijo(nieto_6)
-        hijo_3.agregar_hijo(nieto_3)
+
         # Imprimir la estructura del árbol
         def imprimir_arbol(nodo, nivel=0):
             print('  ' * nivel + '- ' + str(nodo))
