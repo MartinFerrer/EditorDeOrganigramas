@@ -538,16 +538,16 @@ class EditorDeOrganigramas(QMainWindow):
         QTimer.singleShot(1000, self.saveScreenshot)
         QTimer.singleShot(1000, self.save_chart_as_png)
 
-        persona1 = Persona(codigo="1011", dependencia="002", nombre="Juan", apellido = "Perez")
-        persona2 = Persona(codigo="1012", dependencia="002", nombre="Pedro", apellido = "Pascal")
-        persona3 = Persona(codigo="1013", dependencia="002", nombre="Poroto", apellido = "Manteca")
-        persona4 = Persona(codigo="1014", dependencia="002", nombre="El", apellido = "Ivan")
-        persona5 = Persona(codigo="1015", dependencia="002", nombre="Fabrizio", apellido = "K")
-        persona6 = Persona(codigo="1016", dependencia="004", nombre="Martin", apellido = "F")
-        persona7 = Persona(codigo="1017", dependencia="004", nombre="Javier", apellido = "G")
-        persona8 = Persona(codigo="1018", dependencia="008", nombre="Filippi", apellido = "Profe")
-        persona9 = Persona(codigo="1019", dependencia="009", nombre="Ivan", apellido = "Aux")
-        persona10 = Persona(codigo="1020", dependencia="010", nombre="Jhonny", apellido = "Test")
+        persona1 = Persona(codigo="1011", dependencia="002", nombre="Juan", apellido = "Perez", salario=50000)
+        persona2 = Persona(codigo="1012", dependencia="002", nombre="Pedro", apellido = "Pascal", salario=565656)
+        persona3 = Persona(codigo="1013", dependencia="002", nombre="Poroto", apellido = "Manteca", salario=636363)
+        persona4 = Persona(codigo="1014", dependencia="002", nombre="El", apellido = "Ivan", salario=5959595)
+        persona5 = Persona(codigo="1015", dependencia="002", nombre="Fabrizio", apellido = "K", salario=200000)
+        persona6 = Persona(codigo="1016", dependencia="004", nombre="Martin", apellido = "F", salario=19191919)
+        persona7 = Persona(codigo="1017", dependencia="004", nombre="Javier", apellido = "G", salario=666666)
+        persona8 = Persona(codigo="1018", dependencia="008", nombre="Filippi", apellido = "Profe", salario=100000)
+        persona9 = Persona(codigo="1019", dependencia="009", nombre="Ivan", apellido = "Aux", salario=10000)
+        persona10 = Persona(codigo="1020", dependencia="010", nombre="Jhonny", apellido = "Test", salario=10000)
         archivo.personasPorCodigo[persona1.codigo] = persona1
         archivo.personasPorCodigo[persona2.codigo] = persona2
         archivo.personasPorCodigo[persona3.codigo] = persona3

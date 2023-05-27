@@ -39,9 +39,13 @@ class Informes:
 
         # Imprimir Nombres y Apellidos
         pdf.set_font('CalibriItalic', '', size = 20)
+        nombres = []
         for persona in self.archivo.personasPorCodigo.values():
             if persona.dependencia == dependencia.codigo:
-                pdf.cell(0,20, f'{persona.nombre} {persona.apellido}')
+                 nombres.append(f"{persona.apellido} {persona.nombre}")       
+        nombres.sort()
+        for nombre in nombres:
+                pdf.cell(0,20, nombre)
                 pdf.set_font('CalibriItalic', '', size = 15)
                 pdf.write(txt=" \n\n")
                 pdf.set_font('CalibriItalic', '', size = 20)
