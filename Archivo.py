@@ -55,9 +55,7 @@ class Archivo():
     
 
     
-    # TODO: Implementar
-    def crearOrganigrama(self):
-        pass
+
 
 
     # TODO: Implementar
@@ -68,8 +66,11 @@ class Archivo():
     # TODO: Implementar
     def graficarOrganigramaCompleto(self):
         pass
-            
-    
+    def quitarCodres(self, raiz : NodoArbol):
+        raiz.data.codigoResponsable = None
+        for nodo in raiz.children:
+            self.quitarCodres(nodo)
+
     def crearDependencia(self, nom): 
         cod = self.generarCodigoDependencia()
         dep = Dependencia(codigo = cod, codres = None, nombre = nom)
@@ -81,7 +82,7 @@ class Archivo():
         
         def compararCodigo(nodo : NodoArbol, codigo):
             return nodo.data.codigo == codigo
-        nodo = self.raiz.buscar_nodo(codigo_dependencia, compararCodigo)
+        nodo = self.raiz.buscar_nodo(codigo_dependencia, compararCodigo) #Retorna el nodo que tiene el codigo indicado en el argumento
 
         padre : NodoArbol = nodo.padre(self.raiz)
         padre.eliminar_hijo(nodo)
@@ -93,8 +94,8 @@ class Archivo():
         self.dependenciasPorCodigo.pop(base.data.codigo)
         for nodo in base.children:
             base.children.remove(nodo)
-            del nodo # TODO: verificar si mantener aqui?
             self.eliminarNodoYSucesores(nodo)
+        del base
     
     def modificarDependencia(self, codigo_dep = None, nombre_nuevo = None, codres_nuevo = None):
         dep_destino = self.dependenciasPorCodigo[codigo_dep]            
@@ -110,7 +111,7 @@ class Archivo():
 
     def editarUbicacionDependencia(self, nodoMover: NodoArbol, nuevoNodoPadre: NodoArbol):
         """Agrega en los hijos de nodoDestino el objeto nodoMover y elimina de los hijos del anterior padre."""
-        padre : NodoArbol = nodoMover.padre(self.raiz)
+        padre : NodoArbol = nodoMover.padre(self.raiz) #Buscamos el padre del nodo que se va mover
         padre.eliminar_hijo(nodoMover)
         nuevoNodoPadre.agregar_hijo(nodoMover)
 

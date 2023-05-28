@@ -29,7 +29,7 @@ class NodoArbol:
                 return resultado
         return None 
     
-    def nodo_es_hijo(self, nodo):
+    def nodo_es_hijo(self, nodo) -> bool:
         return nodo in self.children
 
     def padre(self, raiz: 'NodoArbol') -> 'NodoArbol':

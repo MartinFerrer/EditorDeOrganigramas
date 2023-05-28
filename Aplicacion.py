@@ -3,6 +3,7 @@ from PyQt6.QtGui import QFont
 import pickle, pickletools
 import datetime
 import os
+import copy
 
 from Entidades.Arbol import *
 from Entidades.Persona import *
@@ -19,18 +20,21 @@ class EditorDeOrganigramas(QMainWindow):
         self.archivos = {}
         self.ruta = os.getcwd() + '\Archivos'
         for file in os.listdir(self.ruta):
-            temp : Archivo = self.leer_archivo(file, datos = None)
+            dir = self.ruta + '\\' + file
+            temp : Archivo = self.leer_archivo(dir, datos = None)
             if temp != None:
                 self.archivos[temp.organigrama.codigo] = temp
         
         print(self.archivos)
         print(type(self.archivos))
+
         persona = Persona(codigo="1011", dependencia="202", nombre="Juan", apellido = "Perez")
         print(persona)
         print(persona.__repr__())
         
         persona.salario = 100000000
         persona.codigo = "1233"  
+
 
         fecha = datetime.now()
         self.crearOrganigrama('Hola', fecha)
@@ -129,12 +133,16 @@ class EditorDeOrganigramas(QMainWindow):
         return datos
 
     # TODO: Implementar
-    def crearOrganigrama(self, nombre, fecha):
+    def crearCodigoOrganigrama(self):
         cod = 0
         while str(cod).zfill(5) in self.archivos.keys():
             cod += 1
+        return str(cod).zfill(5)
+    
+    def crearOrganigrama(self, nombre, fecha):
+        cod = self.crearCodigoOrganigrama()
         nuevo = Archivo()
-        nuevo.organigrama.codigo = str(cod).zfill(5)
+        nuevo.organigrama.codigo = cod
         nuevo.organigrama.organizacion = nombre
         nuevo.organigrama.fecha = fecha
         self.archivos[str(cod).zfill(5)] = nuevo
@@ -144,10 +152,15 @@ class EditorDeOrganigramas(QMainWindow):
     
     # TODO: Implementar
     def abrirOrganigrama():
+
         pass
     
     # TODO: Implementar
-    def copiarOrganigrama():
+    def copiarOrganigrama(self, codigoOrg, nombre, fecha):
+        orgCopy : Archivo = copy.deepcopy(self.archivos[codigoOrg])
+        orgCopy.organigrama.codigo = self.crearCodigoOrganigrama()
+        orgCopy.personasPorCodigo = {}
+        orgCopy.quitarCodres(orgCopy.raiz)
         pass
 
 if __name__ == '__main__':
