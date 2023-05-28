@@ -58,8 +58,39 @@ class Informes:
     def personalPorDependenciaExtendido(self, nodo_actual: NodoArbol):
         if nodo_actual.children is not None:
             for i in range(len(nodo_actual.children)):
-                self.personalPorDependencia(nodo_actual.data)
+                # Crear PDF
+                pdf = FPDF('P', 'mm', 'A4')
+                pdf.add_font('Calibri', '', r'.\fuentes\calibri.ttf')
+                pdf.add_font('CalibriBold', '', r'.\fuentes\calibrib.ttf')
+                pdf.add_font('CalibriItalic', '', r'.\fuentes\calibrii.ttf')
+                pdf.add_page()
+
+            # Imprimir nombre de dependencia
+                pdf.set_font('CalibriBold', '', size=30)
+                pdf.cell(0, 20, f'Dependencia: {nodo_actual.data.nombre}')
+
+            # Imprimir Titulo "Nombre y Apellido"
+                pdf.write(txt="\n\n")
+                pdf.set_font('Calibri', 'U', size=28)
+                pdf.write(txt="Nombre y Apellido")
+                pdf.set_font('Calibri', '', size=28)
+                pdf.write(txt=':\n')
+
+            # Imprimir Nombres y Apellidos
+                pdf.set_font('CalibriItalic', '', size=20)
+                nombres = []
+                for persona in self.archivo.personasPorCodigo.values():
+                    if persona.dependencia == nodo_actual.data.codigo:
+                       nombres.append(f"{persona.apellido} {persona.nombre}")
+                nombres.sort()
+                for nombre in nombres:
+                    pdf.cell(0, 20, nombre)
+                    pdf.set_font('CalibriItalic', '', size=15)
+                    pdf.write(txt=" \n\n")
+                    pdf.set_font('CalibriItalic', '', size=20)
                 self.personalPorDependenciaExtendido(nodo_actual.children[i])
+
+                pdf.output("Personal por Dependencia Extendido.pdf")
 
     
     # TODO: Implementar
