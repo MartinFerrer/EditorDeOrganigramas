@@ -39,8 +39,12 @@ print(Persona1.nombre)
 # print(Persona2.edad)
 
 # print(Persona2.codigo)
+print(Prueba.dic)
 Persona2.busqueda("1010")
 print(Persona1.dic.keys())
+print(Persona1.dic.values())
+Prueba.dic = {}
+print(Prueba.dic)
 
 
 

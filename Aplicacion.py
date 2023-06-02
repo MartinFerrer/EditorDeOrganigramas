@@ -21,7 +21,7 @@ class EditorDeOrganigramas(QMainWindow):
         self.ruta = os.getcwd() + '\Archivos'
         for file in os.listdir(self.ruta):
             dir = self.ruta + '\\' + file
-            temp : Archivo = self.leer_archivo(dir, datos = None)
+            temp : Archivo = self.leer_archivo(dir)
             if temp != None:
                 self.archivos[temp.organigrama.codigo] = temp
         
@@ -126,7 +126,7 @@ class EditorDeOrganigramas(QMainWindow):
             optimized_pickle = pickletools.optimize(pickled)
             outf.write(optimized_pickle)
 
-    def leer_archivo (self, nombre_archivo, datos):
+    def leer_archivo (self, nombre_archivo):
         with open (nombre_archivo, 'rb') as inf:
             if os.path.getsize(nombre_archivo) != 0:
                 datos = pickle.load(inf)
@@ -145,7 +145,7 @@ class EditorDeOrganigramas(QMainWindow):
         nuevo.organigrama.codigo = cod
         nuevo.organigrama.organizacion = nombre
         nuevo.organigrama.fecha = fecha
-        self.archivos[str(cod).zfill(5)] = nuevo
+        self.archivos[cod] = nuevo
         nombre_archivo = self.ruta + '\org_' + nuevo.organigrama.codigo + '.dat'
         print(nombre_archivo)
         self.escribir_archivo(nombre_archivo, nuevo)
@@ -156,9 +156,11 @@ class EditorDeOrganigramas(QMainWindow):
         pass
     
     # TODO: Implementar
-    def copiarOrganigrama(self, codigoOrg, nombre, fecha):
+    def copiarOrganigrama(self, codigoOrg, organizacion, fecha):
         orgCopy : Archivo = copy.deepcopy(self.archivos[codigoOrg])
         orgCopy.organigrama.codigo = self.crearCodigoOrganigrama()
+        orgCopy.organigrama.organizacion = organizacion
+        orgCopy.organigrama.fecha = fecha
         orgCopy.personasPorCodigo = {}
         orgCopy.quitarCodres(orgCopy.raiz)
         pass
