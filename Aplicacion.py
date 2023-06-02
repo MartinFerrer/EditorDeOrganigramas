@@ -60,11 +60,6 @@ class OrganizationalChartView(QGraphicsView):
         self.center_chart()
         self.prev_size = self.size()
         
-    def update_zoom(self, value):
-        zoom_factor = value / 5.0  # Example: Map slider values to zoom factors
-        self.resetTransform()  # Reset any previous transformations
-        self.scale(zoom_factor, zoom_factor)
-        
     def paintEvent(self, event):
         super().paintEvent(event)
         if self.size() != self.prev_size:
@@ -84,64 +79,6 @@ class OrganizationalChartView(QGraphicsView):
     
     # TODO: static node size with scroll bars being allowed but also the ability to zoom in and out of the widget
     
-    def draw_tree(self):
-        self.scene().clear()
-
-        # Calculate the available space
-        available_width = self.width()
-        available_height = self.height()
-
-        # Set margins
-        margin_x = 20
-        margin_y = 20
-
-        # Set initial node width and height
-        node_width = (available_width - 2 * margin_x) / 5
-        node_height = (available_height - 2 * margin_y) / 10
-    
-        root_x = margin_x - (node_width / 2)
-        root_y = margin_y - (node_height / 2)
-
-        self.draw_node(self.root, root_x, root_y, node_width, node_height)
-
-    def draw_tree(self):
-        self.scene().clear()
-
-        # Generate the Graphviz graph
-        dot = graphviz.Digraph(format='svg')
-        self.draw_node(dot, self.root)
-
-        # Set graph attributes for layout
-        dot.graph_attr.update(
-            splines='ortho', 
-            rankdir='TB',)
-    
-        # Render the graph as SVG string
-        svg_bytes = dot.pipe().decode('utf-8')
-
-        # Load the SVG string and draw it in the QGraphicsScene
-        svg_item = QGraphicsSvgItem()
-        renderer = QSvgRenderer(svg_bytes.encode('utf-8'))
-        svg_item.setSharedRenderer(renderer)
-        svg_item.renderer().load(svg_bytes.encode('utf-8'))
-        self.scene().addItem(svg_item)
-        
-        
-    def draw_node(self, dot, node):
-        if node is None:
-            return
-
-        # Add the node to the graph
-        dot.node(str(id(node)), label=str(node.data), shape="rectangle")
-
-        # Recursively add nodes for each child node
-        for child in node.children:
-            self.draw_node(dot, child)
-            # Add the edge from the parent to the child
-            dot.edge(str(id(node)), str(id(child)), arrowhead='none', arrowtail='none', dir='none')
-            
-    
-    # TODO WORKING CODE 
     # def draw_tree(self):
     #     self.scene().clear()
 
@@ -156,72 +93,43 @@ class OrganizationalChartView(QGraphicsView):
     #     # Set initial node width and height
     #     node_width = (available_width - 2 * margin_x) / 5
     #     node_height = (available_height - 2 * margin_y) / 10
-
+    
     #     root_x = margin_x - (node_width / 2)
     #     root_y = margin_y - (node_height / 2)
 
     #     self.draw_node(self.root, root_x, root_y, node_width, node_height)
+
+    def draw_tree(self):
+        self.scene().clear()
+
+        # Generar el grafo con GraphViz
+        dot = graphviz.Digraph(format='svg')
+        self.draw_node(dot, self.root)
+
+        dot.graph_attr.update(
+            #layout='dot',
+            splines='ortho', 
+            rankdir='TB')
+    
+        # Renderizar el grafo como SVG y dibujarlo en la QGraphicsScene del widget
+        svg_item = QGraphicsSvgItem()
+        svg_renderer = QSvgRenderer(dot.pipe())
+        svg_item.setSharedRenderer(svg_renderer)
+        self.scene().addItem(svg_item)
         
-    # def draw_node(self, node: NodoArbol, x, y, width, height):
-    #     rect = QGraphicsRectItem(x, y, width, height)
-    #     rect.setPen(QPen(Qt.GlobalColor.black))
-    #     rect.setBrush(QColor(Qt.GlobalColor.lightGray))
-    #     self.scene().addItem(rect)
+    def draw_node(self, dot : graphviz.Digraph, node: NodoArbol):
+        if node is None:
+            return
 
-    #     label = QGraphicsTextItem(node.data.nombre, rect)
-    #     label.setDefaultTextColor(QColor(Qt.GlobalColor.black))
-       
-    #     # Adjust the font size to fit within the node rectangle
-    #     font = label.font()
-    #     # TODO: opcion en el menu para poner el tamaño de texto maximo deseado
-    #     font.setPointSizeF(width * 1.5 / max(len(node.data.nombre), 1))  # Set initial font size dynamically
-    #     label.setFont(font)
-    #     # Decrease font size until the text fits within the available space or reaches the threshold
-    #     while label.boundingRect().width() > width - 10 or label.boundingRect().height() > height - 10:
-    #         if font.pointSizeF() - 1 > 0:
-    #             font.setPointSizeF(font.pointSizeF() - 1)
-    #             label.setFont(font)
-    #         else:
-    #             break
-    #     if font.pointSizeF() >= 7:
-    #         label.setPos(x + (width - label.boundingRect().width()) / 2, y + (height - label.boundingRect().height()) / 2)
-    #     else:
-    #         # Skip adding the label if the font size is less than 7
-    #         self.scene().removeItem(label)
-        
-    #     if node.children:
-    #         children_count = len(node.children)
-    #         children_width = width
-    #         children_height = height
-    #         children_spacing = 50
-    #         children_vertical_spacing = 100
+        # Add the node to the graph
+        dot.node(str(id(node)), label=str(node.data), shape="rectangle")
 
-    #         total_children_width = children_count * children_width + (children_count - 1) * children_spacing
-    #         children_x = x + (width - total_children_width) / 2  # Center the children nodes horizontally
-    #         children_y = y + height + children_vertical_spacing
-
-    #         for i, child in enumerate(node.children):
-    #             child_x = children_x + (i * (children_width + children_spacing))  # Add spacing between the children nodes
-    #             self.draw_node(child, child_x, children_y, children_width, children_height)
-
-    #             parent_center = QPointF(x + (width / 2), y + height)
-    #             child_center = QPointF(child_x + (children_width / 2), children_y)
-
-    #             # Draw vertical line segment from parent to intermediate point
-    #             v_line = QGraphicsLineItem(parent_center.x(), parent_center.y(), parent_center.x(), child_center.y() - children_vertical_spacing / 3)
-    #             v_line.setPen(QPen(Qt.GlobalColor.black))
-    #             self.scene().addItem(v_line)
-
-    #             # Draw horizontal line segment from intermediate point to child
-    #             h_line = QGraphicsLineItem(parent_center.x(), child_center.y() - children_vertical_spacing / 3, child_center.x(), child_center.y() - children_vertical_spacing / 3)
-    #             h_line.setPen(QPen(Qt.GlobalColor.black))
-    #             self.scene().addItem(h_line)
-
-    #             # Draw vertical line segment from intermediate point to child
-    #             v_line = QGraphicsLineItem(child_center.x(), child_center.y() - children_vertical_spacing / 3, child_center.x(), child_center.y())
-    #             v_line.setPen(QPen(Qt.GlobalColor.black))
-    #             self.scene().addItem(v_line)
-
+        # Recursively add nodes for each child node
+        for child in node.children:
+            self.draw_node(dot, child)
+            # Add the edge from the parent to the child
+            dot.edge(str(id(node)), str(id(child)), arrowhead='none', arrowtail='none', dir='none')
+            
             
 class OrganizationalChartWidget(QWidget):
     def __init__(self, root):
@@ -360,6 +268,11 @@ class ZoomWidget(QWidget):
         painter.drawLine(slider_rect_center.x(), slider_rect_center.y() - 7, 
                          slider_rect_center.x(), slider_rect_center.y() + 7)
         
+        # Keep zoom when resizing
+        #if self.target_widget.size() != self.target_widget.prev_size:
+        #    self.update_zoom(self.zoom_slider.value())
+        #    self.target_widget.prev_size = self.target_widget.size()
+        
     def start_zoom_timer(self, step):
         if not self.zoom_timer.isActive():
             self.zoom_timer_step = step
@@ -445,7 +358,7 @@ class ZoomWidget(QWidget):
 
         self.target_widget.resetTransform()
         self.target_widget.scale(zoom_factor, zoom_factor)       
-        
+
     def updateOnScroll(self, event: QWheelEvent):
         delta = event.angleDelta().y() / 120  # Get scroll wheel delta
         step = 10  # Set the zoom step
