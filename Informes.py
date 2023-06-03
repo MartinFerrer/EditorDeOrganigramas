@@ -10,8 +10,6 @@ from reportlab.lib.pagesizes import A4
 
 warnings.simplefilter('default', DeprecationWarning)
 
-
-
 # TODO: Implementar
 class Informes:
     def __init__(self, archivo: Archivo) -> None:
@@ -57,15 +55,13 @@ class Informes:
         # Guardar el archivo
         pdf.output("Personal por Dependencia.pdf")
 
-
-    def personalPorDependenciaExtendido(self, nodo_actual: NodoArbol):
-        # Crear PDF
-        pdf = FPDF('P', 'mm', 'A4')
-        pdf.add_font('Calibri', '', r'.\fuentes\calibri.ttf')
-        pdf.add_font('CalibriBold', '', r'.\fuentes\calibrib.ttf')
-        pdf.add_font('CalibriItalic', '', r'.\fuentes\calibrii.ttf')
-        pdf.add_page()
-
+    def personalPorDependenciaExtendido(self, nodo_actual: NodoArbol, bandera = 0):
+        if bandera == 0:
+            pdf = FPDF('P', 'mm', 'A4')
+            pdf.add_font('Calibri', '', r'.\fuentes\calibri.ttf')
+            pdf.add_font('CalibriBold', '', r'.\fuentes\calibrib.ttf')
+            pdf.add_font('CalibriItalic', '', r'.\fuentes\calibrii.ttf')
+            pdf.add_page()
         for i in range(len(nodo_actual.children)):
             # Imprimir nombre de dependencia
             pdf.set_font('CalibriBold', '', size=30)
@@ -90,8 +86,9 @@ class Informes:
                 pdf.set_font('CalibriItalic', '', size=15)
                 pdf.write(txt=" \n\n")
                 pdf.set_font('CalibriItalic', '', size=20)
-            self.personalPorDependenciaExtendido(nodo_actual.children[i])
-        pdf.output("Personal por Dependencia.pdf")
+                pdf.add_page()
+            self.personalPorDependenciaExtendido(nodo_actual.children[i], 1)
+        pdf.output("Personal por Dependencia Extendida.pdf")
 
     def salarioPorDependencia(self, dependencia: Dependencia):
         # Crear PDF

@@ -561,10 +561,10 @@ class EditorDeOrganigramas(QMainWindow):
 
         informador = Informes(archivo)
         # Informes
-        informador.personalPorDependencia(hijo_1.data)
+        # informador.personalPorDependencia(hijo_1.data)
+        # informador.salarioPorDependencia(hijo_1.data)
+        # informador.salarioPorDependenciaExtendido(raiz)
         informador.personalPorDependenciaExtendido(hijo_1)
-        informador.salarioPorDependencia(hijo_1.data)
-        informador.salarioPorDependenciaExtendido(raiz)
 
 
 
