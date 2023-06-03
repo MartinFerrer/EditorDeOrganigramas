@@ -49,13 +49,7 @@ class Archivo():
                 if codigo not in self.personasPorCodigo.keys():
                     return codigo
             raise RuntimeError("No se pudo generar codigo para persona! No hay codigos disponibles.")
-
     
-    # TODO: Relacionar el codigo generado al atributo "Codigo" de cada objeto
-    
-
-    
-
 
 
     # TODO: Implementar
@@ -66,10 +60,14 @@ class Archivo():
     # TODO: Implementar
     def graficarOrganigramaCompleto(self):
         pass
+
+
     def quitarCodres(self, raiz : NodoArbol):
+        """Recorre todo el organigrama para poner en None el Codres"""
         raiz.data.codigoResponsable = None
         for nodo in raiz.children:
             self.quitarCodres(nodo)
+
 
     def crearDependencia(self, nom): 
         cod = self.generarCodigoDependencia()
@@ -98,11 +96,19 @@ class Archivo():
         del base
     
     def modificarDependencia(self, codigo_dep = None, nombre_nuevo = None, codres_nuevo = None):
+        """Permite modificar los atributos de la dependencia sin
+                    modificar su ubicación en el organigrama."""
         dep_destino = self.dependenciasPorCodigo[codigo_dep]            
         if nombre_nuevo != None: 
             dep_destino.nombre = nombre_nuevo
         if codres_nuevo in self.personasPorCodigo.keys():
-            # TODO: caso donde la persona pertenece a otra dependencia y es jefe de ella
+
+            #Caso donde la persona pertenece a otra dependencia y es jefe de ella
+            for dependencia in self.dependenciasPorCodigo.values():
+                if dependencia.codigoResponsable == codres_nuevo:
+                    dependencia.codigoResponsable = None
+                    break
+
             self.personasPorCodigo[codres_nuevo].dependencia = dep_destino.codigo
             dep_destino.codigoResponsable = codres_nuevo
         else:
