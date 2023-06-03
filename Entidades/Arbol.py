@@ -21,8 +21,10 @@ class NodoArbol:
         self.children.remove(nodo_hijo)
 
     def buscar_nodo(self, buscado, buscador: Callable[['NodoArbol', Any], bool]) -> 'NodoArbol':
+        """Retorna nodo o el padre del nodo"""
         if buscador(self, buscado):
             return self
+        
         for nodo in self.children:
             resultado = nodo.buscar_nodo(buscado, buscador)
             if resultado is not None:  
@@ -30,12 +32,12 @@ class NodoArbol:
         return None 
     
     def recorrerOrganigrama(self, code, funcion_callback):
-        funcion_callback(self, code)
-        
+        resultado = funcion_callback(self, code)
+
         for nodo in self.children:
-            resultado = nodo.recorrerOrganigrama(code, funcion_callback)
             if resultado == None:
-                return 
+                return None
+            resultado = nodo.recorrerOrganigrama(code, funcion_callback)
 
     
     def nodo_es_hijo(self, nodo) -> bool:
@@ -45,8 +47,11 @@ class NodoArbol:
         return raiz.buscar_nodo(self, NodoArbol.nodo_es_hijo)
     
     def quitarJefe(self, codigoPersona) -> 'None':
-            """Esta funcion nos sirve para cuando tenemos que quitarle a una
+        """Esta funcion nos sirve para cuando tenemos que quitarle a una
             persona del cargo de jefe de alguna dependencia"""
-            if self.data.codigoResponsable == codigoPersona:
-                self.data.codigoResponsable = None
-                return None
+        if self.data.codigoResponsable == codigoPersona:
+            self.data.codigoResponsable = None
+            return None
+    
+    def compararCodigo(self, codigoDep):
+        return self.data.codigo == codigoDep
