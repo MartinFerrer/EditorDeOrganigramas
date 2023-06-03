@@ -25,77 +25,84 @@ class EditorDeOrganigramas(QMainWindow):
             if temp != None:
                 self.archivos[temp.organigrama.codigo] = temp
         
-        print(self.archivos)
-        print(type(self.archivos))
+        # print(self.archivos)
+        # print(type(self.archivos))
 
-        persona = Persona(codigo="1011", dependencia="202", nombre="Juan", apellido = "Perez")
-        print(persona)
-        print(persona.__repr__())
+        # persona = Persona(codigo="1011", dependencia="202", nombre="Juan", apellido = "Perez")
+        # print(persona)
+        # print(persona.__repr__())
         
-        persona.salario = 100000000
-        persona.codigo = "1233"  
+        # persona.salario = 100000000
+        # persona.codigo = "1233"  
 
 
         fecha = datetime.now()
-        self.crearOrganigrama('Hola', fecha)
-        print(self.archivos)
-        self.crearOrganigrama('Chau', fecha)
-        print(self.archivos)
-        temp = self.leer_archivo()
+        #self.crearOrganigrama('Cesars', fecha)
+        # print(self.archivos)
+        # self.crearOrganigrama('Chau', fecha)
+        # print(self.archivos)
+        temp = self.archivos["00000"]
+        temp.crearDependencia("Gotocesars", temp.raiz)
+        dep = temp.raiz.buscar_nodo("000", NodoArbol.compararCodigo)
+        print(dep)
+        temp.ingresarPersona("Fabri", "Kawabata", "5406655", "0972399578", "Angel Torres", 1234)
+        temp.ingresarPersona("Hiroto", "Yamashita", "2348932", "2384123", "Mcal. Estigarribia", 2345)
+        temp.asignarPersonaADependencia("0000", "000", True)
+        individuo = temp.personasPorCodigo["0000"]
+        print(individuo)
+        print(temp.raiz.data)
+        temp.raiz.recorrerOrganigrama("0000", NodoArbol.quitarJefe)
+        print(temp.raiz.data)
+        temp.asignarPersonaADependencia("0001", "000", True)
+        print(temp.raiz.data)
+
+
+
         
         #TODO: segmentar guardado de archivos
-        with open('data.dat', 'wb') as outf:
-            pickled = pickle.dumps(persona, pickle.HIGHEST_PROTOCOL)
-            optimized_pickle = pickletools.optimize(pickled)
-            outf.write(optimized_pickle)
+        # with open('data.dat', 'wb') as outf:
+        #     pickled = pickle.dumps(persona, pickle.HIGHEST_PROTOCOL)
+        #     optimized_pickle = pickletools.optimize(pickled)
+        #     outf.write(optimized_pickle)
 
-        with open('data.dat', 'rb') as inf:
-            personaLeida = pickle.load(inf)
-            print(personaLeida.__repr__())
+        # with open('data.dat', 'rb') as inf:
+        #     personaLeida = pickle.load(inf)
+        #     print(personaLeida.__repr__())
         
         # Crear el árbol
-        raiz = NodoArbol(Dependencia(codigo='001', codigoResponsable='1234', nombre='Dependencia A'))
+        # raiz = NodoArbol(Dependencia(codigo='001', codigoResponsable='1234', nombre='Dependencia A'))
         
-        hijo_1 = NodoArbol(Dependencia(codigo='002', codigoResponsable='5678', nombre='Dependencia B'))
-        hijo_2 = NodoArbol(Dependencia(codigo='003', codigoResponsable='9012', nombre='Dependencia C'))
+        # hijo_1 = NodoArbol(Dependencia(codigo='002', codigoResponsable='5678', nombre='Dependencia B'))
+        # hijo_2 = NodoArbol(Dependencia(codigo='003', codigoResponsable='9012', nombre='Dependencia C'))
 
-        nieto_1 = NodoArbol(Dependencia(codigo='004', codigoResponsable='3456', nombre='Dependencia D'))
-        nieto_2 = NodoArbol(Dependencia(codigo='005', codigoResponsable='7890', nombre='Dependencia E'))
+        # nieto_1 = NodoArbol(Dependencia(codigo='004', codigoResponsable='3456', nombre='Dependencia D'))
+        # nieto_2 = NodoArbol(Dependencia(codigo='005', codigoResponsable='7890', nombre='Dependencia E'))
 
-        raiz.agregar_hijo(hijo_1)
-        raiz.agregar_hijo(hijo_2)
+        # raiz.agregar_hijo(hijo_1)
+        # raiz.agregar_hijo(hijo_2)
 
-        hijo_1.agregar_hijo(nieto_1)
-        hijo_1.agregar_hijo(nieto_2)
+        # hijo_1.agregar_hijo(nieto_1)
+        # hijo_1.agregar_hijo(nieto_2)
 
-        # Imprimir la estructura del árbol
-        def imprimir_arbol(nodo, nivel=0):
-            print('  ' * nivel + '- ' + str(nodo))
-            for hijo in nodo.children:
-                imprimir_arbol(hijo, nivel + 1)
+        # # Imprimir la estructura del árbol
+        # def imprimir_arbol(nodo, nivel=0):
+        #     print('  ' * nivel + '- ' + str(nodo))
+        #     for hijo in nodo.children:
+        #         imprimir_arbol(hijo, nivel + 1)
 
-        imprimir_arbol(raiz)
-        print("Arbol guardado:\n")
+        # imprimir_arbol(raiz)
+        # print("Arbol guardado:\n")
         #TODO: segmentar guardado de archivos
-        with open('arbol.dat', 'wb') as outf:
-            pickled = pickle.dumps(raiz, pickle.HIGHEST_PROTOCOL)
-            optimized_pickle = pickletools.optimize(pickled)
-            outf.write(optimized_pickle)
+        # with open('arbol.dat', 'wb') as outf:
+        #     pickled = pickle.dumps(raiz, pickle.HIGHEST_PROTOCOL)
+        #     optimized_pickle = pickletools.optimize(pickled)
+        #     outf.write(optimized_pickle)
 
-        with open('arbol.dat', 'rb') as inf:
-            raiz = pickle.load(inf)
-            imprimir_arbol(raiz)
+        # with open('arbol.dat', 'rb') as inf:
+        #     raiz = pickle.load(inf)
+        #     imprimir_arbol(raiz)
         
-        '''lista_temp = ['00001', '00002', '00003']
-        with open ('archivos.dat', 'wb') as outcodigof:
-            pickled = pickle.dumps(lista_temp, pickle.HIGHEST_PROTOCOL)
-            optimized_pickle = pickletools.optimize(pickled)
-            outcodigof.write(optimized_pickle)
-
-        with open ('archivos.dat', 'rb') as initf:
-            lista_nueva = pickle.load(initf)
-            print(lista_nueva)
-        '''
+      
         # Create the widgets
         self.label = QLabel("Nombre de organigrama:", self)
         self.label.move(20, 20)
@@ -132,7 +139,6 @@ class EditorDeOrganigramas(QMainWindow):
                 datos = pickle.load(inf)
         return datos
 
-    # TODO: Implementar
     def crearCodigoOrganigrama(self):
         cod = 0
         while str(cod).zfill(5) in self.archivos.keys():
@@ -164,6 +170,8 @@ class EditorDeOrganigramas(QMainWindow):
         orgCopy.personasPorCodigo = {}
         orgCopy.quitarCodres(orgCopy.raiz)
         pass
+
+
 
 if __name__ == '__main__':
     app = QApplication([])
