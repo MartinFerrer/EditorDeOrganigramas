@@ -37,11 +37,11 @@ class EditorDeOrganigramas(QMainWindow):
 
 
         fecha = datetime.now()
-        self.crearOrganigrama('Hola', fecha)
-        print(self.archivos)
-        self.crearOrganigrama('Chau', fecha)
-        print(self.archivos)
-        temp = self.leer_archivo()
+        self.crearOrganigrama('Cesars', fecha)
+        # print(self.archivos)
+        # self.crearOrganigrama('Chau', fecha)
+        # print(self.archivos)
+        #temp = self.leer_archivo()
         
         #TODO: segmentar guardado de archivos
         with open('data.dat', 'wb') as outf:
@@ -132,7 +132,6 @@ class EditorDeOrganigramas(QMainWindow):
                 datos = pickle.load(inf)
         return datos
 
-    # TODO: Implementar
     def crearCodigoOrganigrama(self):
         cod = 0
         while str(cod).zfill(5) in self.archivos.keys():
@@ -164,6 +163,8 @@ class EditorDeOrganigramas(QMainWindow):
         orgCopy.personasPorCodigo = {}
         orgCopy.quitarCodres(orgCopy.raiz)
         pass
+
+
 
 if __name__ == '__main__':
     app = QApplication([])

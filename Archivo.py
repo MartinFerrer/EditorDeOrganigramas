@@ -110,7 +110,7 @@ class Archivo():
         if codres_nuevo in self.personasPorCodigo.keys():
 
             #Caso donde la persona pertenece a otra dependencia y es jefe de ella
-            self.raiz.recorrerOrganigrama(codres_nuevo, NodoArbol.quitarJefe)
+            self.raiz.recorrerOrganigrama(codres_nuevo, self.raiz.quitarJefe)
             self.personasPorCodigo[codres_nuevo].dependencia = nodoDep.data.codigo
             nodoDep.data.codigoResponsable = codres_nuevo
         else:
