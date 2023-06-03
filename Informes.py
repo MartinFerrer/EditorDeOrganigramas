@@ -4,6 +4,8 @@ from Entidades.Arbol import *
 from Entidades.Dependencia import *
 from Entidades.Persona import *
 from Archivo import *
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
 
 
 warnings.simplefilter('default', DeprecationWarning)
@@ -47,7 +49,7 @@ class Informes:
                  nombres.append(f"{persona.apellido} {persona.nombre}")       
         nombres.sort()
         for nombre in nombres:
-            pdf.cell(0,20, nombre)
+            pdf.cell(0, 20, nombre)
             pdf.set_font('CalibriItalic', '', size = 15)
             pdf.write(txt=" \n\n")
             pdf.set_font('CalibriItalic', '', size = 20)
@@ -55,45 +57,42 @@ class Informes:
         # Guardar el archivo
         pdf.output("Personal por Dependencia.pdf")
 
-    def personalPorDependenciaExtendido(self, nodo_actual: NodoArbol):
-        if nodo_actual.children is not None:
-            for i in range(len(nodo_actual.children)):
-                # Crear PDF
-                pdf = FPDF('P', 'mm', 'A4')
-                pdf.add_font('Calibri', '', r'.\fuentes\calibri.ttf')
-                pdf.add_font('CalibriBold', '', r'.\fuentes\calibrib.ttf')
-                pdf.add_font('CalibriItalic', '', r'.\fuentes\calibrii.ttf')
-                pdf.add_page()
 
+    def personalPorDependenciaExtendido(self, nodo_actual: NodoArbol):
+        # Crear PDF
+        pdf = FPDF('P', 'mm', 'A4')
+        pdf.add_font('Calibri', '', r'.\fuentes\calibri.ttf')
+        pdf.add_font('CalibriBold', '', r'.\fuentes\calibrib.ttf')
+        pdf.add_font('CalibriItalic', '', r'.\fuentes\calibrii.ttf')
+        pdf.add_page()
+
+        for i in range(len(nodo_actual.children)):
             # Imprimir nombre de dependencia
-                pdf.set_font('CalibriBold', '', size=30)
-                pdf.cell(0, 20, f'Dependencia: {nodo_actual.data.nombre}')
+            pdf.set_font('CalibriBold', '', size=30)
+            pdf.cell(0, 20, f'Dependencia: {nodo_actual.data.nombre}')
 
             # Imprimir Titulo "Nombre y Apellido"
-                pdf.write(txt="\n\n")
-                pdf.set_font('Calibri', 'U', size=28)
-                pdf.write(txt="Nombre y Apellido")
-                pdf.set_font('Calibri', '', size=28)
-                pdf.write(txt=':\n')
+            pdf.write(txt="\n\n")
+            pdf.set_font('Calibri', 'U', size=28)
+            pdf.write(txt="Nombre y Apellido")
+            pdf.set_font('Calibri', '', size=28)
+            pdf.write(txt=':\n')
 
             # Imprimir Nombres y Apellidos
+            pdf.set_font('CalibriItalic', '', size=20)
+            nombres = []
+            for persona in self.archivo.personasPorCodigo.values():
+                if persona.dependencia == nodo_actual.data.codigo:
+                    nombres.append(f"{persona.apellido} {persona.nombre}")
+            nombres.sort()
+            for nombre in nombres:
+                pdf.cell(0, 20, nombre)
+                pdf.set_font('CalibriItalic', '', size=15)
+                pdf.write(txt=" \n\n")
                 pdf.set_font('CalibriItalic', '', size=20)
-                nombres = []
-                for persona in self.archivo.personasPorCodigo.values():
-                    if persona.dependencia == nodo_actual.data.codigo:
-                       nombres.append(f"{persona.apellido} {persona.nombre}")
-                nombres.sort()
-                for nombre in nombres:
-                    pdf.cell(0, 20, nombre)
-                    pdf.set_font('CalibriItalic', '', size=15)
-                    pdf.write(txt=" \n\n")
-                    pdf.set_font('CalibriItalic', '', size=20)
-                self.personalPorDependenciaExtendido(nodo_actual.children[i])
+            self.personalPorDependenciaExtendido(nodo_actual.children[i])
+        pdf.output("Personal por Dependencia.pdf")
 
-                pdf.output("Personal por Dependencia Extendido.pdf")
-
-    
-    # TODO: Implementar
     def salarioPorDependencia(self, dependencia: Dependencia):
         # Crear PDF
         pdf = FPDF('P', 'mm', 'A4')
@@ -113,12 +112,12 @@ class Informes:
         salarios = []
         for persona in self.archivo.personasPorCodigo.values():
             if persona.dependencia == dependencia.codigo:
-                 salarios.append(persona.salario)   
+                salarios.append(persona.salario)
         cantempdep = len(salarios)
         sumsueldep = sum(salarios)
-        pdf.cell(0,20, f'Cantidad de personas: {cantempdep}')
+        pdf.cell(0, 20, f'Cantidad de personas: {cantempdep}')
         pdf.write(txt="\n\n")
-        pdf.cell(0,20, f'Sueldo de la dependencia: {sumsueldep}')
+        pdf.cell(0, 20, f'Sueldo de la dependencia: {sumsueldep}')
 
         # Guardar el archivo
         pdf.output("SalarioPorDependencia.pdf")
