@@ -546,7 +546,7 @@ class EditorDeOrganigramas(QMainWindow):
         persona6 = Persona(codigo="1016", dependencia="004", nombre="Martin", apellido = "F", salario=19191919)
         persona7 = Persona(codigo="1017", dependencia="004", nombre="Javier", apellido = "G", salario=666666)
         persona8 = Persona(codigo="1018", dependencia="008", nombre="Filippi", apellido = "Profe", salario=100000)
-        persona9 = Persona(codigo="1019", dependencia="009", nombre="Ivan", apellido = "Aux", salario=10000)
+        persona9 = Persona(codigo="1019", dependencia="005", nombre="Ivan", apellido = "Aux", salario=10000)
         persona10 = Persona(codigo="1020", dependencia="010", nombre="Jhonny", apellido = "Test", salario=10000)
         archivo.personasPorCodigo[persona1.codigo] = persona1
         archivo.personasPorCodigo[persona2.codigo] = persona2
@@ -559,11 +559,13 @@ class EditorDeOrganigramas(QMainWindow):
         archivo.personasPorCodigo[persona9.codigo] = persona9
         archivo.personasPorCodigo[persona10.codigo] = persona10
 
+        hijo_1.data.codigoResponsable = persona5.codigo
+        
         informador = Informes(archivo)
         # Informes
-        # informador.personalPorDependencia(hijo_1.data)
-        # informador.salarioPorDependencia(hijo_1.data)
-        # informador.salarioPorDependenciaExtendido(raiz)
+        informador.personalPorDependencia(hijo_1.data)
+        informador.salarioPorDependencia(hijo_1.data)
+        informador.salarioPorDependenciaExtendido(raiz)
         informador.personalPorDependenciaExtendido(hijo_1)
 
 

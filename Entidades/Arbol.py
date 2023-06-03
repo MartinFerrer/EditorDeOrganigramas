@@ -34,3 +34,6 @@ class NodoArbol:
 
     def padre(self, raiz: 'NodoArbol') -> 'NodoArbol':
         return raiz.buscar_nodo(self, NodoArbol.nodo_es_hijo)
+
+    def __repr__(self) -> str:
+        return f"(Dependencia: {self.data}, Hijos: {self.children})"
