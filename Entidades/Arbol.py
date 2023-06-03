@@ -28,9 +28,22 @@ class NodoArbol:
             if resultado is not None:  
                 return resultado
         return None 
+    def recorrerOrganigrama(self, code, funcion_callback):
+        funcion_callback(self, code)
+        
+        for nodo in self.children:
+            resultado = nodo.recorrerOrganigrama(funcion_callback)
+            if resultado == None:
+                return 
+
     
     def nodo_es_hijo(self, nodo) -> bool:
         return nodo in self.children
 
     def padre(self, raiz: 'NodoArbol') -> 'NodoArbol':
         return raiz.buscar_nodo(self, NodoArbol.nodo_es_hijo)
+    
+    def quitarJefe(self, codRes):
+            if self.data.codigoResponsable == codRes:
+                self.data.codigoResponsable = None
+                return None

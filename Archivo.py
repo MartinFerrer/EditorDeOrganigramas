@@ -14,7 +14,7 @@ class Archivo():
         self.raiz : NodoArbol = NodoArbol(None)
         """Raiz del arbol con dependencias que representan al organigrama"""
 
-        self.dependenciasPorCodigo : dict[str, Dependencia] = {}
+        self.dependenciasPorCodigo : list[str] = []
         """Un diccionario relacionando a los objetos de Dependencia con su codigo de 3 digitos"""
 
         self.personasPorCodigo : dict[str, Persona] = {}
@@ -69,10 +69,12 @@ class Archivo():
             self.quitarCodres(nodo)
 
 
-    def crearDependencia(self, nom): 
+    def crearDependencia(self, nom, nodoPadre : NodoArbol): 
         cod = self.generarCodigoDependencia()
         dep = Dependencia(codigo = cod, codres = None, nombre = nom)
-        self.dependenciasPorCodigo[cod] = dep
+        nodo = NodoArbol(dep)
+        nodoPadre.agregar_hijo(nodo)
+        self.dependenciasPorCodigo.append(cod)
         
     def eliminarDependencia(self, codigo_dependencia):
         """Permite eliminar una dependencia existente y todas las 
@@ -82,14 +84,14 @@ class Archivo():
             return nodo.data.codigo == codigo
         nodo = self.raiz.buscar_nodo(codigo_dependencia, compararCodigo) #Retorna el nodo que tiene el codigo indicado en el argumento
 
-        padre : NodoArbol = nodo.padre(self.raiz)
+        padre : NodoArbol = nodo.padre(self.raiz) #Padre del nodo encontrado
         padre.eliminar_hijo(nodo)
         self.eliminarNodoYSucesores(nodo)
 
     # Elimina los sucesores de la dependencia "base" y desasigna a sus trabajadores 
     def eliminarNodoYSucesores(self, base: 'NodoArbol'): 
         self.desasignarPersonasDeDependencia(base.data.codigo)
-        self.dependenciasPorCodigo.pop(base.data.codigo)
+        self.dependenciasPorCodigo.remove(base.data.codigo)
         for nodo in base.children:
             base.children.remove(nodo)
             self.eliminarNodoYSucesores(nodo)
@@ -98,19 +100,19 @@ class Archivo():
     def modificarDependencia(self, codigo_dep = None, nombre_nuevo = None, codres_nuevo = None):
         """Permite modificar los atributos de la dependencia sin
                     modificar su ubicación en el organigrama."""
-        dep_destino = self.dependenciasPorCodigo[codigo_dep]            
+        def compararCodigo(nodo : NodoArbol, codigo):
+            return nodo.data.codigo == codigo
+
+        nodoDep : NodoArbol = self.raiz.buscar_nodo(codigo_dep, compararCodigo)
+                
         if nombre_nuevo != None: 
-            dep_destino.nombre = nombre_nuevo
+            nodoDep.data.nombre = nombre_nuevo
         if codres_nuevo in self.personasPorCodigo.keys():
 
             #Caso donde la persona pertenece a otra dependencia y es jefe de ella
-            for dependencia in self.dependenciasPorCodigo.values():
-                if dependencia.codigoResponsable == codres_nuevo:
-                    dependencia.codigoResponsable = None
-                    break
-
-            self.personasPorCodigo[codres_nuevo].dependencia = dep_destino.codigo
-            dep_destino.codigoResponsable = codres_nuevo
+            self.raiz.recorrerOrganigrama(codres_nuevo, NodoArbol.quitarJefe)
+            self.personasPorCodigo[codres_nuevo].dependencia = nodoDep.data.codigo
+            nodoDep.data.codigoResponsable = codres_nuevo
         else:
             raise ValueError("""No se puede asignar la persona como responsable
                               de la dependencia ya que no existe!""")
@@ -134,10 +136,7 @@ class Archivo():
         
         
     def eliminarPersona(self, codigo_persona):
-        for dependencia in self.dependenciasPorCodigo.values():
-            if dependencia.codigoResponsable == codigo_persona:
-                dependencia.codigoResponsable = None
-                break
+        self.raiz.recorrerOrganigrama(codigo_persona, NodoArbol.quitarJefe)
         self.personasPorCodigo.pop(codigo_persona)
         
     def modificarPersona(self, persona_nueva : Persona):
