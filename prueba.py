@@ -1,3 +1,4 @@
+import copy 
 class Prueba:
     dic = {}
     def __init__(self, nombre, edad, codigo) -> None:
@@ -19,9 +20,31 @@ class Prueba:
 
 Persona1 = Prueba("Juan", 23, "1110")
 Persona2 = Prueba("Fabri", 24, "1010")
+Persona2 = Persona1
+print(Persona1.nombre)
 
+print(Persona2.nombre)
+print(Persona2.edad)
+Persona2.nombre = "Jose"
+print(Persona1.nombre)
+
+# print(Persona2)
+# Persona2 = copy.deepcopy(Persona1)
+# print(Persona2)
+
+# print(Persona1.nombre)
+
+# print(Persona2.nombre)
+
+# print(Persona2.edad)
+
+# print(Persona2.codigo)
+print(Prueba.dic)
 Persona2.busqueda("1010")
-
+print(Persona1.dic.keys())
+print(Persona1.dic.values())
+Prueba.dic = {}
+print(Prueba.dic)
 
 
 
