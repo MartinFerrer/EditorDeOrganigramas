@@ -36,16 +36,15 @@ from PyQt6.QtSvgWidgets import QGraphicsSvgItem
 
 
 import pickle, pickletools
-import time
 import sys
 import os
+import datetime
 
 from Entidades.Arbol import *
 from Entidades.Persona import *
 from Entidades.Dependencia import *
 from Archivo import *
-
-
+from Informes import *
 
 class OrganizationalChartView(QGraphicsView):
     def __init__(self, root):
@@ -357,8 +356,8 @@ class ZoomWidget(QWidget):
         self.zoom_percentage.setText(zoom_percentage)
 
         self.target_widget.resetTransform()
-        self.target_widget.scale(zoom_factor, zoom_factor)       
-
+        self.target_widget.scale(zoom_factor, zoom_factor)  
+             
     def updateOnScroll(self, event: QWheelEvent):
         delta = event.angleDelta().y() / 120  # Get scroll wheel delta
         step = 10  # Set the zoom step
@@ -370,23 +369,59 @@ class EditorDeOrganigramas(QMainWindow):
     
     def __init__(self):
         super().__init__()
+        # Set the window title and size
+        self.setWindowTitle("Editor De Organigramas")
+        self.setGeometry(100, 100, 400, 200)
+        self.archivos = {}
+        self.ruta = os.getcwd() + '\Archivos'
+        for file in os.listdir(self.ruta):
+            dir = self.ruta + '\\' + file
+            temp : Archivo = self.leer_archivo(dir)
+            if temp != None:
+                self.archivos[temp.organigrama.codigo] = temp
         
-        # TEMP Unit tests TODO: REMOVE
+        # print(self.archivos)
+        # print(type(self.archivos))
+
         persona = Persona(codigo="1011", dependencia="202", nombre="Juan", apellido = "Perez")
         print(persona)
         print(persona.__repr__())
         persona.salario = 100000000
-        persona.codigo = "1233"
+        persona.codigo = "1233"  
+
+
+        fecha = datetime.now()
+        #self.crearOrganigrama('Cesars', fecha)
+        #print(self.archivos)
+        #self.crearOrganigrama('Chau', fecha)
+        #print(self.archivos)
+        temp = self.archivos["00000"]
+        temp.crearDependencia("Gotocesars", temp.raiz)
+        dep = temp.raiz.buscar_nodo("000", NodoArbol.compararCodigo)
+        print(dep)
+        temp.ingresarPersona("Fabri", "Kawabata", "5406655", "0972399578", "Angel Torres", 1234)
+        temp.ingresarPersona("Hiroto", "Yamashita", "2348932", "2384123", "Mcal. Estigarribia", 2345)
+        temp.asignarPersonaADependencia("0000", "000", True)
+        individuo = temp.personasPorCodigo["0000"]
+        print(individuo)
+        print(temp.raiz.data)
+        temp.raiz.recorrerOrganigrama("0000", NodoArbol.quitarJefe)
+        print(temp.raiz.data)
+        temp.asignarPersonaADependencia("0001", "000", True)
+        print(temp.raiz.data)
+
+
+
         
         #TODO: segmentar guardado de archivos
-        with open('data.dat', 'wb') as outf:
-            pickled = pickle.dumps(persona, pickle.HIGHEST_PROTOCOL)
-            optimized_pickle = pickletools.optimize(pickled)
-            outf.write(optimized_pickle)
+        # with open('data.dat', 'wb') as outf:
+        #     pickled = pickle.dumps(persona, pickle.HIGHEST_PROTOCOL)
+        #     optimized_pickle = pickletools.optimize(pickled)
+        #     outf.write(optimized_pickle)
 
-        with open('data.dat', 'rb') as inf:
-            personaLeida = pickle.load(inf)
-            print(personaLeida.__repr__())
+        # with open('data.dat', 'rb') as inf:
+        #     personaLeida = pickle.load(inf)
+        #     print(personaLeida.__repr__())
         
         # Crear el árbol
         raiz = NodoArbol(Dependencia(codigo='001', codigoResponsable='1234', nombre='Dependencia A'))
@@ -417,13 +452,12 @@ class EditorDeOrganigramas(QMainWindow):
         # Imprimir la estructura del árbol
         def imprimir_arbol(nodo, nivel=0):
             print('  ' * nivel + '- ' + str(nodo))
-            for hijo in nodo.children:
+            for hijo in nodo.children:  
                 imprimir_arbol(hijo, nivel + 1)
 
        
         imprimir_arbol(raiz)
 
-        
         #TODO: segmentar guardado de archivos
         archivo : Archivo = Archivo()
         archivo.raiz = raiz
@@ -451,6 +485,38 @@ class EditorDeOrganigramas(QMainWindow):
         
         QTimer.singleShot(1000, self.saveScreenshot)
         QTimer.singleShot(1000, self.save_chart_as_png)
+
+        persona1 = Persona(codigo="1011", dependencia="002", nombre="Juan", apellido = "Perez", salario=50000)
+        persona2 = Persona(codigo="1012", dependencia="002", nombre="Pedro", apellido = "Pascal", salario=565656)
+        persona3 = Persona(codigo="1013", dependencia="002", nombre="Poroto", apellido = "Manteca", salario=636363)
+        persona4 = Persona(codigo="1014", dependencia="002", nombre="El", apellido = "Ivan", salario=5959595)
+        persona5 = Persona(codigo="1015", dependencia="002", nombre="Fabrizio", apellido = "K", salario=200000)
+        persona6 = Persona(codigo="1016", dependencia="004", nombre="Martin", apellido = "F", salario=19191919)
+        persona7 = Persona(codigo="1017", dependencia="004", nombre="Javier", apellido = "G", salario=666666)
+        persona8 = Persona(codigo="1018", dependencia="008", nombre="Filippi", apellido = "Profe", salario=100000)
+        persona9 = Persona(codigo="1019", dependencia="005", nombre="Ivan", apellido = "Aux", salario=10000)
+        persona10 = Persona(codigo="1020", dependencia="010", nombre="Jhonny", apellido = "Test", salario=10000)
+        archivo.personasPorCodigo[persona1.codigo] = persona1
+        archivo.personasPorCodigo[persona2.codigo] = persona2
+        archivo.personasPorCodigo[persona3.codigo] = persona3
+        archivo.personasPorCodigo[persona4.codigo] = persona4
+        archivo.personasPorCodigo[persona5.codigo] = persona5
+        archivo.personasPorCodigo[persona6.codigo] = persona6
+        archivo.personasPorCodigo[persona7.codigo] = persona7
+        archivo.personasPorCodigo[persona8.codigo] = persona8
+        archivo.personasPorCodigo[persona9.codigo] = persona9
+        archivo.personasPorCodigo[persona10.codigo] = persona10
+
+        hijo_1.data.codigoResponsable = persona5.codigo
+        
+        informador = Informes(archivo)
+        # Informes
+        informador.personalPorDependencia(hijo_1.data)
+        informador.salarioPorDependencia(hijo_1.data)
+        informador.salarioPorDependenciaExtendido(raiz)
+        informador.personalPorDependenciaExtendido(hijo_1)
+
+
 
 
         
@@ -580,14 +646,136 @@ class EditorDeOrganigramas(QMainWindow):
     def crearOrganigrama():
         pass
     
-    # TODO: Implementar
-    def abrirOrganigrama():
-        pass
+    def init_ui(self):
+        self.create_toolbar()
+        self.create_menu_bar()
+        self.create_status_bar()
+        self.set_central_widget()
     
-    # TODO: Implementar
-    def copiarOrganigrama():
+        self.setGeometry(300, 300, 800, 600)
+        self.setWindowTitle("Application")
+        self.show()
+     
+    
+    def create_toolbar(self):
+        self.toolbar = ResizableToolBar("Properties", self)
+
+        label1 = QLabel("Property 1:")
+        label2 = QLabel("Property 2:")
+        text_field1 = QLineEdit()
+        text_field2 = QLineEdit()
+
+        self.toolbar.addWidget(label1)
+        self.toolbar.addWidget(text_field1)
+        self.toolbar.addSeparator()
+        self.toolbar.addWidget(label2)
+        self.toolbar.addWidget(text_field2)
+
+        self.addToolBar(Qt.ToolBarArea.RightToolBarArea, self.toolbar)
+
+    def create_menu_bar(self):
+        menu_bar = self.menuBar()
+
+        file_menu = menu_bar.addMenu("File")
+
+        action_open = QAction("Open", self)
+        action_save = QAction("Save", self)
+        action_exit = QAction("Exit", self)
+
+        file_menu.addAction(action_open)
+        file_menu.addAction(action_save)
+        file_menu.addAction(action_exit)
+
+        action_open.triggered.connect(self.open_file)
+        action_save.triggered.connect(self.save_file)
+        action_exit.triggered.connect(self.close)
+
+    def create_status_bar(self):
+        self.status_label = QLabel()
+        self.statusBar().addWidget(self.status_label)
+        
+        self.zoom_widget = ZoomWidget(target_widget=self.central_widget.organizational_chart)
+        self.statusBar().addPermanentWidget(self.zoom_widget)
+
+    def set_central_widget(self):
+        self.setCentralWidget(self.central_widget)
+
+        self.central_widget.setMouseTracking(True)  # Enable mouse tracking for central widget
+        self.central_widget.mouseMoveEvent = self.mouse_move_event
+        self.central_widget.mousePressEvent = self.mouse_press_event
+        self.central_widget.mouseReleaseEvent = self.mouse_release_event
+
+    def open_file(self):
+        # Functionality for opening a file
         pass
- 
+
+    def save_file(self):
+        # Functionality for saving a file
+        pass
+
+    def wheelEvent(self, event: QWheelEvent) -> None:
+        modifiers = QApplication.keyboardModifiers()
+        # Actualizar zoom al hacer ctrl + scrollwheel
+        if modifiers == Qt.KeyboardModifier.ControlModifier:
+            self.zoom_widget.updateOnScroll(event)
+        # Si no, usar comportamiento normal de scroll
+        else:
+            super().wheelEvent(event)
+                              
+    def mouse_move_event(self, event):
+        # Handle mouse move event
+        pos = event.pos()
+        self.status_label.setText(f"Mouse position: ({pos.x()}, {pos.y()})")
+
+    def mouse_press_event(self, event):
+        # Handle mouse press event
+        pos = event.pos()
+        self.status_label.setText(f"Mouse clicked at: ({pos.x()}, {pos.y()})")
+
+    def mouse_release_event(self, event):
+        # Handle mouse release event
+        pos = event.pos()
+        self.status_label.setText(f"Mouse released at: ({pos.x()}, {pos.y()})")
+        #self.status_label.clear()
+        
+    def escribir_archivo (self, nombre_archivo, datos):
+        with open (nombre_archivo, 'wb') as outf:
+            pickled = pickle.dumps(datos, pickle.HIGHEST_PROTOCOL)
+            optimized_pickle = pickletools.optimize(pickled)
+            outf.write(optimized_pickle)
+
+    def leer_archivo (self, nombre_archivo):
+        with open (nombre_archivo, 'rb') as inf:
+            if os.path.getsize(nombre_archivo) != 0:
+                datos = pickle.load(inf)
+        return datos
+
+    def crearCodigoOrganigrama(self):
+        cod = 0
+        while str(cod).zfill(5) in self.archivos.keys():
+            cod += 1
+        return str(cod).zfill(5)
+    
+    def crearOrganigrama(self, nombre, fecha):
+        cod = self.crearCodigoOrganigrama()
+        nuevo = Archivo()
+        nuevo.organigrama.codigo = cod
+        nuevo.organigrama.organizacion = nombre
+        nuevo.organigrama.fecha = fecha
+        self.archivos[cod] = nuevo
+        nombre_archivo = self.ruta + '\org_' + nuevo.organigrama.codigo + '.dat'
+        print(nombre_archivo)
+        self.escribir_archivo(nombre_archivo, nuevo)
+    
+    def copiarOrganigrama(self, codigoOrg, organizacion, fecha):
+        orgCopy : Archivo = copy.deepcopy(self.archivos[codigoOrg])
+        orgCopy.organigrama.codigo = self.crearCodigoOrganigrama()
+        orgCopy.organigrama.organizacion = organizacion
+        orgCopy.organigrama.fecha = fecha
+        orgCopy.personasPorCodigo = {}
+        orgCopy.quitarCodres(orgCopy.raiz)
+        pass
+
 if __name__ == '__main__':
     app = QApplication([])
     window = EditorDeOrganigramas()
