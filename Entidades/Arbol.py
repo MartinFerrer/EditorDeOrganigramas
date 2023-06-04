@@ -33,13 +33,11 @@ class NodoArbol:
     
     def recorrerOrganigrama(self, code, funcion_callback):
         resultado = funcion_callback(self, code)
-
         for nodo in self.children:
             if resultado == None:
                 return None
             resultado = nodo.recorrerOrganigrama(code, funcion_callback)
 
-    
     def nodo_es_hijo(self, nodo) -> bool:
         return nodo in self.children
 
@@ -55,3 +53,6 @@ class NodoArbol:
     
     def compararCodigo(self, codigoDep):
         return self.data.codigo == codigoDep
+
+    def __repr__(self) -> str:
+        return f"(Dependencia: {self.data}, Hijos: {self.children})"

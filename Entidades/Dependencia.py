@@ -16,8 +16,10 @@ class Dependencia(param.Parameterized):
 
     # Representacion accessible para el usuario (#TODO: posiblemente remover si vamos a tener todo
     # en interfaz grafica)
+    #def __str__(self):
+    #    return f"Dependencia: {self.nombre}, Código: {self.codigo}, Responsable: {self.codigoResponsable}"
     def __str__(self):
-        return f"Dependencia: {self.nombre}, Código: {self.codigo}, Responsable: {self.codigoResponsable}"
+        return f"{self.nombre}"
     
     
 
