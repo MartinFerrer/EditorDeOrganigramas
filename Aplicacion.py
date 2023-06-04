@@ -481,9 +481,9 @@ class EditorDeOrganigramas(QMainWindow):
 
         fecha = datetime.now()
         #self.crearOrganigrama('Cesars', fecha)
-        # print(self.archivos)
-        # self.crearOrganigrama('Chau', fecha)
-        # print(self.archivos)
+        #print(self.archivos)
+        #self.crearOrganigrama('Chau', fecha)
+        #print(self.archivos)
         temp = self.archivos["00000"]
         temp.crearDependencia("Gotocesars", temp.raiz)
         dep = temp.raiz.buscar_nodo("000", NodoArbol.compararCodigo)
@@ -513,7 +513,7 @@ class EditorDeOrganigramas(QMainWindow):
         #     print(personaLeida.__repr__())
         
         # Crear el árbol
-        # raiz = NodoArbol(Dependencia(codigo='001', codigoResponsable='1234', nombre='Dependencia A'))
+        raiz = NodoArbol(Dependencia(codigo='001', codigoResponsable='1234', nombre='Dependencia A'))
         
         hijo_1 = NodoArbol(Dependencia(codigo='002', codigoResponsable='5678', nombre='Dependencia B'))
         hijo_2 = NodoArbol(Dependencia(codigo='003', codigoResponsable='9012', nombre='Dependencia C'))
