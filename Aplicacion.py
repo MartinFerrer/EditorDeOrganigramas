@@ -21,9 +21,10 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QStackedLayout,
     QFrame,
-    QStyleFactory)
+    QStyleFactory,
+    QMenu,)
 from PyQt6.QtCore import Qt, QPoint, QPointF, QSize, QTimer
-from PyQt6.QtGui import QAction, QMouseEvent, QWheelEvent
+from PyQt6.QtGui import QAction, QMouseEvent, QWheelEvent, QIcon
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, 
     QWidget, QVBoxLayout, 
@@ -34,9 +35,9 @@ from PyQt6.QtGui import QFont, QColor, QPen, QPainter, QPixmap, QImage
 from PyQt6.QtSvg import QSvgRenderer
 from PyQt6.QtSvgWidgets import QGraphicsSvgItem
 
-
 import pickle, pickletools
 import sys
+import copy
 import os
 import datetime
 
@@ -365,6 +366,8 @@ class ZoomWidget(QWidget):
         new_zoom_value = max(self.minimum_zoom, min(self.maximum_zoom , zoom_value + (delta * step)))
         self.zoom_slider.setValue(new_zoom_value)
 
+
+
 class EditorDeOrganigramas(QMainWindow):
     
     def __init__(self):
@@ -557,7 +560,8 @@ class EditorDeOrganigramas(QMainWindow):
         self.set_central_widget()
     
         self.setGeometry(300, 300, 800, 600)
-        self.setWindowTitle("Application")
+        self.setWindowTitle("Dreamchart")
+        self.setWindowIcon(QIcon("E:\Cursos\Facultad\Semestres\2ndoSemestre\MateriasFPUNA\AlgoritmosYEstructuraDeDatos2\EditorDeOrganigramas\EditorDeOrganigramas\Interfaz\Icono.ico"))
         self.show()
      
     
@@ -580,20 +584,95 @@ class EditorDeOrganigramas(QMainWindow):
     def create_menu_bar(self):
         menu_bar = self.menuBar()
 
-        file_menu = menu_bar.addMenu("File")
+        # Datos del menu
+        SEPARADOR_HORIZONTAL = (None, None) # Constante para un separador en el menu dropdown
+        menu_data = [
+            {
+                "label": "Archivo",
+                "actions": [
+                    ("Abrir Recientes", self.get_recent_files),
+                    SEPARADOR_HORIZONTAL,  # Empty string for horizontal divider
+                    ("Exit", self.close)
+                ]
+            },
+            {
+                "label": "Organigrama",
+                "actions": [
+                    ("Crear Organigrama", self.dummy),
+                    ("Abrir Organigrama", self.dummy),
+                    ("Crear Dependencia", self.dummy),
+                    ("Eliminar Dependencia", self.dummy),
+                    ("Modificar Dependencia", self.dummy),
+                    ("Editar Ubicacion Dependencias", self.dummy),
+                    ("Copiar Organigrama", self.dummy),
+                    ("Graficar Organigrama", self.dummy)
+                ]
+            },
+            {
+                "label": "Personas",
+                "actions": [
+                    ("Ingresar Personas", self.dummy),
+                    ("Eliminar Personas", self.dummy),
+                    ("Modificar Personas", self.dummy),
+                    ("Asignar Personas a Dependencias", self.dummy)
+                ]
+            },
+            {
+                "label": "Informes",
+                "actions": [
+                    ("Personal por Dependencia", self.dummy),
+                    ("Personal por Dependencia Extendido", self.dummy),
+                    ("Salario por Dependencia", self.dummy),
+                    ("Salario por Dependencia Extendido", self.dummy),
+                    ("Imprimir Organigrama", self.dummy)
+                ]
+            },
+            {
+                "label": "Ayuda",
+                "actions": [
+                ]
+            },
+        ]
 
-        action_open = QAction("Open", self)
-        action_save = QAction("Save", self)
-        action_exit = QAction("Exit", self)
+        for menu_item in menu_data:
+            menu_label = menu_item["label"]
+            menu = QMenu(menu_label, self)
+            menu_bar.addMenu(menu)
 
-        file_menu.addAction(action_open)
-        file_menu.addAction(action_save)
-        file_menu.addAction(action_exit)
+            for action_text, action_data in menu_item["actions"]:
+                if action_text is None:
+                    menu.addSeparator()
+                    continue
+                
+                # Obtener dinamicamente los archivos recientes y agregarlos al menu
+                if action_text == "Abrir Recientes":
+                    submenu_label = action_text
+                    submenu = QMenu(submenu_label, self)
+                    menu.addMenu(submenu)
+                    recent_files = action_data()
+                    for file_name in recent_files:
+                        action = QAction(file_name, self)
+                        action.triggered.connect(self.open_recent_file)
+                        submenu.addAction(action)
+                else:
+                    action = QAction(action_text, self)
+                    action.triggered.connect(action_data)
+                    menu.addAction(action)
 
-        action_open.triggered.connect(self.open_file)
-        action_save.triggered.connect(self.save_file)
-        action_exit.triggered.connect(self.close)
+    def get_recent_files(self):
+        # Replace this with your logic to retrieve the list of recent files
+        recent_files = ["file1.txt", "file2.txt", "file3.txt"]
+        return recent_files
 
+    def open_recent_file(self):
+        # Handle the action for opening a recent file
+        # Retrieve the selected file and open it
+        selected_file = self.sender().text()
+        # Add your code to open the file
+            
+    def dummy(self):
+        pass
+            
     def create_status_bar(self):
         self.status_label = QLabel()
         self.statusBar().addWidget(self.status_label)
@@ -608,14 +687,6 @@ class EditorDeOrganigramas(QMainWindow):
         self.central_widget.mouseMoveEvent = self.mouse_move_event
         self.central_widget.mousePressEvent = self.mouse_press_event
         self.central_widget.mouseReleaseEvent = self.mouse_release_event
-
-    def open_file(self):
-        # Functionality for opening a file
-        pass
-
-    def save_file(self):
-        # Functionality for saving a file
-        pass
 
     def wheelEvent(self, event: QWheelEvent) -> None:
         modifiers = QApplication.keyboardModifiers()
@@ -642,102 +713,7 @@ class EditorDeOrganigramas(QMainWindow):
         self.status_label.setText(f"Mouse released at: ({pos.x()}, {pos.y()})")
         #self.status_label.clear()
         
-    # TODO: Implementar
-    def crearOrganigrama():
-        pass
-    
-    def init_ui(self):
-        self.create_toolbar()
-        self.create_menu_bar()
-        self.create_status_bar()
-        self.set_central_widget()
-    
-        self.setGeometry(300, 300, 800, 600)
-        self.setWindowTitle("Application")
-        self.show()
-     
-    
-    def create_toolbar(self):
-        self.toolbar = ResizableToolBar("Properties", self)
-
-        label1 = QLabel("Property 1:")
-        label2 = QLabel("Property 2:")
-        text_field1 = QLineEdit()
-        text_field2 = QLineEdit()
-
-        self.toolbar.addWidget(label1)
-        self.toolbar.addWidget(text_field1)
-        self.toolbar.addSeparator()
-        self.toolbar.addWidget(label2)
-        self.toolbar.addWidget(text_field2)
-
-        self.addToolBar(Qt.ToolBarArea.RightToolBarArea, self.toolbar)
-
-    def create_menu_bar(self):
-        menu_bar = self.menuBar()
-
-        file_menu = menu_bar.addMenu("File")
-
-        action_open = QAction("Open", self)
-        action_save = QAction("Save", self)
-        action_exit = QAction("Exit", self)
-
-        file_menu.addAction(action_open)
-        file_menu.addAction(action_save)
-        file_menu.addAction(action_exit)
-
-        action_open.triggered.connect(self.open_file)
-        action_save.triggered.connect(self.save_file)
-        action_exit.triggered.connect(self.close)
-
-    def create_status_bar(self):
-        self.status_label = QLabel()
-        self.statusBar().addWidget(self.status_label)
-        
-        self.zoom_widget = ZoomWidget(target_widget=self.central_widget.organizational_chart)
-        self.statusBar().addPermanentWidget(self.zoom_widget)
-
-    def set_central_widget(self):
-        self.setCentralWidget(self.central_widget)
-
-        self.central_widget.setMouseTracking(True)  # Enable mouse tracking for central widget
-        self.central_widget.mouseMoveEvent = self.mouse_move_event
-        self.central_widget.mousePressEvent = self.mouse_press_event
-        self.central_widget.mouseReleaseEvent = self.mouse_release_event
-
-    def open_file(self):
-        # Functionality for opening a file
-        pass
-
-    def save_file(self):
-        # Functionality for saving a file
-        pass
-
-    def wheelEvent(self, event: QWheelEvent) -> None:
-        modifiers = QApplication.keyboardModifiers()
-        # Actualizar zoom al hacer ctrl + scrollwheel
-        if modifiers == Qt.KeyboardModifier.ControlModifier:
-            self.zoom_widget.updateOnScroll(event)
-        # Si no, usar comportamiento normal de scroll
-        else:
-            super().wheelEvent(event)
-                              
-    def mouse_move_event(self, event):
-        # Handle mouse move event
-        pos = event.pos()
-        self.status_label.setText(f"Mouse position: ({pos.x()}, {pos.y()})")
-
-    def mouse_press_event(self, event):
-        # Handle mouse press event
-        pos = event.pos()
-        self.status_label.setText(f"Mouse clicked at: ({pos.x()}, {pos.y()})")
-
-    def mouse_release_event(self, event):
-        # Handle mouse release event
-        pos = event.pos()
-        self.status_label.setText(f"Mouse released at: ({pos.x()}, {pos.y()})")
-        #self.status_label.clear()
-        
+   
     def escribir_archivo (self, nombre_archivo, datos):
         with open (nombre_archivo, 'wb') as outf:
             pickled = pickle.dumps(datos, pickle.HIGHEST_PROTOCOL)
