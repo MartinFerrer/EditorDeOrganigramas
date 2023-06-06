@@ -4,10 +4,12 @@ from Entidades.Organigrama import *
 from Entidades.Persona import *
 from random import randint
 
-# TODO: Implementar correctamente/completamente
 class Archivo():
 
     def __init__(self) -> None:
+        self.ruta : str = "InvalidRoute"
+        """Ruta donde se guarda el archivo""" 
+        
         self.organigrama : Organigrama = Organigrama()
         """Informacion acerca del organigrama"""
 

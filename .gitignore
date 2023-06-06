@@ -37,3 +37,6 @@ coverage.xml
 *.png
 *.svg
 *.pdf
+
+# Generated files
+.Archivos/

@@ -52,5 +52,6 @@ class NodoArbol:
     def compararCodigo(self, codigoDep):
         return self.data.codigo == codigoDep
 
+    # Representacion para debug
     def __repr__(self) -> str:
         return f"(Dependencia: {self.data}, Hijos: {self.children})"
