@@ -1,16 +1,20 @@
 from fpdf import FPDF
 import warnings
+import os
 from Entidades.Arbol import *
 from Entidades.Dependencia import *
 from Entidades.Persona import *
 from Archivo import *
 
+# TODO: remove / preguntar para que era a poroto?
 #warnings.simplefilter('default', DeprecationWarning)
 
-class Informes:
+class Informador:
+    
+    def __init__(self, rutaDeArchivos) -> None:
+        self.ruta_de_archivos = rutaDeArchivos
 
-    @staticmethod    
-    def personalPorDependencia(archivo: Archivo, dependencia : Dependencia):
+    def personalPorDependencia(self, archivo: Archivo, dependencia : Dependencia) -> str:
         """
         Para una dependencia, presenta una lista de personas de la misma, 
         ordenada alfabéticamente por apellido y nombre. No incluye a las dependencias sucesoras.
@@ -56,10 +60,12 @@ class Informes:
             pdf.set_font('CalibriItalic', '', size = 20)
 
         # Guardar el archivo
-        pdf.output("Personal_Por_Dependencia.pdf")
+        ruta = os.path.join(self.ruta_de_archivos, "Personal_Por_Dependencia.pdf")
+        pdf.output(ruta)
+        return ruta
   
-    @staticmethod
-    def personalPorDependenciaExtendido(archivo: Archivo, nodo: NodoArbol, pdf: FPDF = None, padre: NodoArbol = None):
+    def personalPorDependenciaExtendido(
+        self, archivo: Archivo, nodo: NodoArbol, pdf: FPDF = None, padre: NodoArbol = None) -> str:
         # Crear el pdf en la primera llamada
         if pdf is None:
             pdf = FPDF('P', 'mm', 'A4')
@@ -110,14 +116,15 @@ class Informes:
 
         # Transversar todos los nodos hijos recursivamente
         for child in nodo.children:
-            Informes.personalPorDependenciaExtendido(archivo, child, pdf, nodo)
+            self.personalPorDependenciaExtendido(archivo, child, pdf, nodo)
 
         # Si esta es la llamada incial, escribir el pdf con pdf.output()
         if padre is None:
-            pdf.output("Personal_Por_Dependencia_Extendido.pdf")
+            ruta = os.path.join(self.ruta_de_archivos, "Personal_Por_Dependencia_Extendido.pdf")
+            pdf.output(ruta)
+            return ruta
 
-    @staticmethod
-    def salarioPorDependencia(archivo: Archivo, dependencia: Dependencia):
+    def salarioPorDependencia(self, archivo: Archivo, dependencia: Dependencia):
         # Crear PDF
         pdf = FPDF('P', 'mm', 'A4')
         pdf.add_font('Calibri', '', r'.\fuentes\calibri.ttf')
@@ -141,10 +148,12 @@ class Informes:
         pdf.write(txt=f'• Sueldo de la dependencia: {sum(salarios)}')
 
         # Guardar el archivo
-        pdf.output("Salario_Por_Dependencia.pdf")
+        ruta = os.path.join(self.ruta_de_archivos, "Salario_Por_Dependencia.pdf")
+        pdf.output(ruta)
+        return ruta
     
-    @staticmethod
-    def salarioPorDependenciaExtendido(archivo: Archivo, nodo: NodoArbol, pdf: FPDF = None, padre: NodoArbol = None):
+    def salarioPorDependenciaExtendido(
+        self, archivo: Archivo, nodo: NodoArbol, pdf: FPDF = None, padre: NodoArbol = None) -> str:
         # Crear el pdf en la primera llamada
         if pdf is None:
             pdf = FPDF('P', 'mm', 'A4')
@@ -177,14 +186,15 @@ class Informes:
 
         # Transversar todos los nodos hijos recursivamente
         for child in nodo.children:
-            Informes.salarioPorDependenciaExtendido(archivo, child, pdf, nodo)
+            self.salarioPorDependenciaExtendido(archivo, child, pdf, nodo)
 
         # Si esta es la llamada incial, escribir el pdf con pdf.output()
         if padre is None:
-            pdf.output("Salario_Por_Dependencia_Extendido.pdf")
+            ruta = os.path.join(self.ruta_de_archivos, "Salario_Por_Dependencia_Extendido.pdf")
+            pdf.output(ruta)
+            return ruta
         
     # TODO: Implementar
-    @staticmethod
-    def imprimirOrganigrama(archivo: Archivo):
+    def imprimirOrganigrama(self, archivo: Archivo) -> str:
         #imprimir el grafico del organigrama completo
         pass

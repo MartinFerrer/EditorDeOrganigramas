@@ -29,12 +29,13 @@ class NodoArbol:
                 return resultado
         return None 
     
-    def recorrerOrganigrama(self, code, funcion_callback):
-        resultado = funcion_callback(self, code)
+    # TODO: cambiar/hacer generico? 
+    def recorrerOrganigrama(self, codigo, funcion_callback):
+        resultado = funcion_callback(self, codigo)
         for nodo in self.children:
             if resultado == None:
                 return None
-            resultado = nodo.recorrerOrganigrama(code, funcion_callback)
+            resultado = nodo.recorrerOrganigrama(codigo, funcion_callback)
 
     def nodo_es_hijo(self, nodo) -> bool:
         return nodo in self.children

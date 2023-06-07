@@ -10,10 +10,12 @@ import numpy as np
 import graphviz
 
 from functools import partial
-from PyQt6.QtCore import Qt, QPoint, QPointF, QSize, QTimer, QDate, pyqtSignal, QLocale, QRegularExpression
+from PyQt6.QtCore import (
+    Qt, QPoint, QPointF, QSize, QTimer, QDate, pyqtSignal, QLocale, QRegularExpression, QUrl,
+    QFile)
 from PyQt6.QtGui import (
     QAction, QMouseEvent, QWheelEvent, QIcon, QFont, QColor, QPen, QPainter, QPixmap, QImage, 
-    QRegularExpressionValidator, QValidator, QIntValidator
+    QRegularExpressionValidator, QValidator, QIntValidator, QCloseEvent, QDesktopServices, QPageSize
 )
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QLabel, QToolBar, QDockWidget, QLineEdit, QPushButton, QTextEdit,
@@ -21,10 +23,12 @@ from PyQt6.QtWidgets import (
     QFrame, QStyleFactory, QMenu, QMessageBox, QInputDialog, QDateEdit, QCalendarWidget, QDialog,
     QApplication, QMainWindow, QWidget, QVBoxLayout, QGraphicsScene, QGraphicsView,
     QGraphicsRectItem, QGraphicsTextItem, QGraphicsLineItem, QGraphicsPixmapItem, QDialogButtonBox,
-    QTabBar, QTabWidget, QFileDialog
+    QTabBar, QTabWidget, QFileDialog, QApplication, QScrollArea, QComboBox
 )
 from PyQt6.QtSvg import QSvgRenderer
 from PyQt6.QtSvgWidgets import QGraphicsSvgItem
+from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
+
 
 from Entidades.Arbol import *
 from Entidades.Persona import *
@@ -33,15 +37,21 @@ from Archivo import *
 from Informes import *
 
 from typing import Tuple
+import fitz
+import subprocess
+from win32 import win32print, win32api
 
 class OrganizationalChartView(QGraphicsView):
-    def __init__(self, root):
+    def __init__(self, archivo: Archivo):
         super().__init__()
         self.setScene(QGraphicsScene())
         self.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
-        self.root = root
+        self.archivo = archivo
+        self.raiz = None
+        if archivo:
+            self.raiz = archivo.raiz
 
         self.draw_tree()
         self.center_chart()
@@ -91,10 +101,13 @@ class OrganizationalChartView(QGraphicsView):
     # TODO: hacer que las flechas se comporten 100% como un organigrama
     def draw_tree(self):
         self.scene().clear()
+        
+        if not self.archivo:
+            return
 
         # Generar el grafo con GraphViz
         dot = graphviz.Digraph(format='svg')
-        self.draw_node(dot, self.root)
+        self.draw_node(dot, self.raiz)
 
         dot.graph_attr.update(
             #layout='dot',
@@ -112,7 +125,16 @@ class OrganizationalChartView(QGraphicsView):
             return
 
         # Add the node to the graph
-        dot.node(str(id(node)), label=str(node.data), shape="rectangle")
+        
+        # TODO: dibujar mejor los jefes
+        nombre, apellido= "Sin", "Jefe"
+        jefe = None
+        if node.data:
+            jefe : Persona = self.archivo.personasPorCodigo.get(node.data.codigoResponsable)
+        if jefe:
+            nombre = jefe.nombre
+            apellido = jefe.apellido
+        dot.node(str(id(node)), label=f"{node.data}\n Jefe: {nombre}, {apellido}", shape="rectangle")
 
         # Recursively add nodes for each child node
         for child in node.children:
@@ -121,12 +143,13 @@ class OrganizationalChartView(QGraphicsView):
             dot.edge(str(id(node)), str(id(child)), arrowhead='none', arrowtail='none', dir='none')
               
 class OrganizationalChartWidget(QWidget):
-    def __init__(self, root):
+    def __init__(self, archivo: Archivo):
         super().__init__()
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
 
-        self.organizational_chart = OrganizationalChartView(root)
+        self.archivo = archivo
+        self.organizational_chart = OrganizationalChartView(archivo)
         self.layout.addWidget(self.organizational_chart)
 
     def resizeEvent(self, event):
@@ -346,12 +369,171 @@ class DateInputDialog(QDialog):
     
     def getDate(self):
         return self.calendar_widget.selectedDate().toPyDate()
+
+class DependencySelectionDialog(QDialog):
+    def __init__(self, root_node):
+        super().__init__()
+        self.setWindowTitle("Dependency Selection")
+        self.layout = QVBoxLayout()
+        self.comboBox = QComboBox()
+        self.node_dict = {}
+        self.populate_dropdown(root_node)
+        self.layout.addWidget(self.comboBox)
+
+        self.button = QPushButton("Select")
+        self.button.clicked.connect(self.accept)
+        self.layout.addWidget(self.button)
+
+        self.setLayout(self.layout)
+
+    def populate_dropdown(self, node: NodoArbol):
+        self.comboBox.addItem(node.data.nombre)  # Add the current node to the dropdown
+        self.node_dict[node.data.nombre] = node  # Store node reference in dictionary
+        for child in node.children:
+            self.populate_dropdown(child)  # Recursively add child nodes
+
+    def selected_node(self) -> NodoArbol:
+        selected_node_text = self.comboBox.currentText()
+        return self.node_dict[selected_node_text]
+ 
+class PDFPopupWindow(QDialog):
+    def __init__(self, pdf_path):
+        super().__init__()
+        self.setWindowTitle("PDF Viewer")
+        self.pdf_path = pdf_path
+        
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+            
+        self.setWindowTitle("PDF Viewer")
+        # No permitir cambiar el tamaño de la ventana popup
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.MSWindowsFixedSizeDialogHint) 
+        self.pdf_path = pdf_path
+
+        # Create a QScrollArea to display the PDF content
+        scroll_area = QScrollArea()
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        layout.addWidget(scroll_area)
+
+        # Create a QWidget to contain the rendered PDF pages
+        pdf_widget = QWidget()
+        pdf_layout = QVBoxLayout()
+        pdf_widget.setLayout(pdf_layout)
+        scroll_area.setWidget(pdf_widget)
+
+        # Load and display the PDF content
+        pdf_doc: fitz.Document = fitz.open(self.pdf_path)
+        for page_num in range(pdf_doc.page_count):
+            page: fitz.Page = pdf_doc.load_page(page_num)
+            pix: fitz.Pixmap = page.get_pixmap()
+
+            # Convert the pixmap to a QImage
+            qimage = QImage(pix.samples, pix.width, pix.height, pix.stride, QImage.Format.Format_RGB888)
+
+            # Create a QLabel to display the page image
+            page_label = QLabel()
+            page_label.setPixmap(QPixmap.fromImage(qimage))
+            pdf_layout.addWidget(page_label)
+
+        # Enable scrolling within the QScrollArea
+        scroll_area.setWidgetResizable(True)
+
+        # Create a QHBoxLayout for the buttons
+        button_layout = QHBoxLayout()
+
+        # Create a button for printing the PDF
+        print_button = QPushButton("Print PDF")
+        print_button.clicked.connect(self.print_pdf)
+        button_layout.addWidget(print_button)
+
+        # Create a button for saving the PDF
+        save_button = QPushButton("Save PDF")
+        save_button.clicked.connect(self.save_pdf)
+        button_layout.addWidget(save_button)
+
+        # Create a button for closing the window
+        close_button = QPushButton("Close")
+        close_button.clicked.connect(self.close)
+        button_layout.addWidget(close_button)
+
+        # Add the button layout to the main layout
+        layout.addLayout(button_layout)
+
+    # TODO:fix
+    def print_pdf(self):
+        printer = QPrinter()
+        print_dialog = QPrintDialog(printer, self)
+
+        if print_dialog.exec() == QPrintDialog.DialogCode.Accepted:
+            #try:
+                #os.startfile(self.pdf_path, "print")
+            printer_name = print_dialog.printer().printerName()
+            page_range = print_dialog.printer().pageRanges().firstPage(), print_dialog.printer().pageRanges().lastPage()
+            
+            print("PRINTER:")
+            print(printer_name)
+            print(page_range)
+            
+            if printer_name:
+                printer_handle = win32print.OpenPrinter(printer_name)
+            else:
+                printer_handle = win32print.GetDefaultPrinter()
+
+            if page_range:
+                start_page, end_page = page_range
+                print_range = f'FromPage={start_page} ToPage={end_page}'
+            else:
+                print_range = ""
+
+            print_parameters = f'"{printer_name}" {print_range}'
+            print(print_parameters)
+            # Print the PDF file
+            win32api.ShellExecute(
+                0,                  #hwnd
+                "printto",            #op
+                self.pdf_path,      #file
+                print_parameters,   #params
+                None,               #_dir
+                0                   #bShow
+            )
+            #except BaseException:
+            #    print("Error occurred while printing the PDF.")
+            
+    def get_max_page_count(printer_handle):
+        printer_info = win32print.GetPrinter(printer_handle, 2)
+        dev_mode = printer_info["pDevMode"]
+        max_page_count = dev_mode.DefaultSource # or any other attribute that represents the maximum page count
+        return max_page_count    
     
+    def save_pdf(self):
+        file_dialog = QFileDialog()
+        file_dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+        file_dialog.setDefaultSuffix(".pdf")
+        file_path, _ = file_dialog.getSaveFileName(self, "Save PDF", "", "PDF Files (*.pdf)")
+        if file_path:
+            QFile.copy(self.pdf_path, file_path)
+
+               
+# TODO: mostrar en algun lugar de la interfaz la fecha del organigrama?
 class EditorDeOrganigramas(QMainWindow):
-    
+    @property
+    def archivoEnfocado(self):
+        return self._archivoEnfocado
+
+    @archivoEnfocado.setter
+    def archivoEnfocado(self, value : Archivo):
+        self._archivoEnfocado = value
+        if self.ui_inicializada:
+            self.central_widget.organizational_chart.archivo = value
+            self.central_widget.organizational_chart.raiz = value.raiz
+            self.central_widget.organizational_chart.draw_tree()
+            self.central_widget.organizational_chart.center_chart()
+            self.status_label.setText(f"Vigente hasta: {value.organigrama.fecha.strftime(r'%d/%m/%Y')}")
+        
     def __init__(self):
         super().__init__()
         
+        self.ui_inicializada = False
         # Cargar archivos 
         self.archivos : dict[str, Archivo] = {}
         """Diccionario de archivos en memoria con codigo de archivo como llave""" 
@@ -361,8 +543,12 @@ class EditorDeOrganigramas(QMainWindow):
         """Ruta donde se guardan archivos internos del programa, incluyendo los archivos de autoguardado/recuperacion"""
         self.ruta_archivos_recientes = os.path.join(self.ruta_archivos, "archivos_recientes.dat")
         
+        self.informador = Informador(self.ruta_archivos)
+        """Instancia de clase para generar los informes"""
+        
         self.archivoEnfocado = Archivo()
         self.archivoEnfocado.ruta = os.path.join(self.ruta_archivos, "00000.org")
+        print(self.archivoEnfocado.ruta)
         self.archivosRecientes = []
         
         # Crear ruta de archivos del programa si no existe
@@ -405,12 +591,7 @@ class EditorDeOrganigramas(QMainWindow):
         persona.codigo = "1233"  
 
 
-        fecha = datetime.now()
-        #self.crearOrganigrama('Cesars', fecha)
-        #print(self.archivos)
-        #self.crearOrganigrama('Chau', fecha)
-        #print(self.archivos)
-        temp =  self.archivoEnfocado
+        temp = self.archivoEnfocado
         temp.crearDependencia("Gotocesars", temp.raiz)
         dep = temp.raiz.buscar_nodo("000", NodoArbol.compararCodigo)
         print(dep)
@@ -427,18 +608,18 @@ class EditorDeOrganigramas(QMainWindow):
 
     
         # Crear el árbol
-        raiz = NodoArbol(Dependencia(codigo='001', codigoResponsable='1234', nombre='Dependencia A'))
+        raiz = NodoArbol(Dependencia(codigo='001', codigoResponsable='1011', nombre='Dependencia A'))
         
-        hijo_1 = NodoArbol(Dependencia(codigo='002', codigoResponsable='5678', nombre='Dependencia B'))
-        hijo_2 = NodoArbol(Dependencia(codigo='003', codigoResponsable='9012', nombre='Dependencia C'))
-        hijo_3 = NodoArbol(Dependencia(codigo='006', codigoResponsable='9013', nombre='Dependencia F'))
+        hijo_1 = NodoArbol(Dependencia(codigo='002', codigoResponsable='1012', nombre='Dependencia B'))
+        hijo_2 = NodoArbol(Dependencia(codigo='003', codigoResponsable='1013', nombre='Dependencia C'))
+        hijo_3 = NodoArbol(Dependencia(codigo='006', codigoResponsable='1014', nombre='Dependencia F'))
 
-        nieto_1 = NodoArbol(Dependencia(codigo='004', codigoResponsable='3456', nombre='Dependencia D'))
-        nieto_2 = NodoArbol(Dependencia(codigo='005', codigoResponsable='7890', nombre='Dependencia E'))
-        nieto_3 = NodoArbol(Dependencia(codigo='007', codigoResponsable='9014', nombre='Dependencia G'))
-        nieto_4 = NodoArbol(Dependencia(codigo='008', codigoResponsable='9015', nombre='Dependencia H'))
-        nieto_5 = NodoArbol(Dependencia(codigo='009', codigoResponsable='9016', nombre='Dependencia I'))
-        nieto_6 = NodoArbol(Dependencia(codigo='010', codigoResponsable='9017', nombre='Dependencia J'))
+        nieto_1 = NodoArbol(Dependencia(codigo='004', codigoResponsable='1015', nombre='Dependencia D'))
+        nieto_2 = NodoArbol(Dependencia(codigo='005', codigoResponsable='1016', nombre='Dependencia E'))
+        nieto_3 = NodoArbol(Dependencia(codigo='007', codigoResponsable='1017', nombre='Dependencia G'))
+        nieto_4 = NodoArbol(Dependencia(codigo='008', codigoResponsable='1018', nombre='Dependencia H'))
+        nieto_5 = NodoArbol(Dependencia(codigo='009', codigoResponsable='1019', nombre='Dependencia I'))
+        nieto_6 = NodoArbol(Dependencia(codigo='010', codigoResponsable='1020', nombre='Dependencia J'))
 
 
         raiz.agregar_hijo(hijo_1)
@@ -463,17 +644,9 @@ class EditorDeOrganigramas(QMainWindow):
 
         #TODO: segmentar guardado de archivos
         archivo : Archivo = Archivo()
+        archivo.organigrama.organizacion = "OrgPrueba"
+        archivo.organigrama.fecha = datetime.now()
         archivo.raiz = raiz
-        
-        print("Archivo guardado:\n")
-        with open('archivo.dat', 'wb') as outf:
-            pickled = pickle.dumps(archivo, pickle.HIGHEST_PROTOCOL)
-            optimized_pickle = pickletools.optimize(pickled)
-            outf.write(optimized_pickle)
-
-        with open('archivo.dat', 'rb') as inf:
-            archivo = pickle.load(inf)
-            imprimir_arbol(archivo.raiz)
         
         def compararCodigo(nodo : NodoArbol, codigo):
             return nodo.data.codigo == codigo
@@ -508,25 +681,33 @@ class EditorDeOrganigramas(QMainWindow):
 
         hijo_1.data.codigoResponsable = persona5.codigo
         
-        # Informes
-        Informes.personalPorDependencia(archivo, hijo_1.data)
-        Informes.salarioPorDependencia(archivo, hijo_1.data)
-        Informes.salarioPorDependenciaExtendido(archivo, raiz)
-        Informes.personalPorDependenciaExtendido(archivo, hijo_1)
+        print("Archivo guardado:\n")
+        with open('archivo.org', 'wb') as outf:
+            pickled = pickle.dumps(archivo, pickle.HIGHEST_PROTOCOL)
+            optimized_pickle = pickletools.optimize(pickled)
+            outf.write(optimized_pickle)
+
+        with open('archivo.org', 'rb') as inf:
+            archivo = pickle.load(inf)
+            imprimir_arbol(archivo.raiz)
+        
+        # Informes    
+        self.informador.personalPorDependencia(self.archivoEnfocado, hijo_1.data)
+        self.informador.salarioPorDependencia(self.archivoEnfocado, hijo_1.data)
+        self.informador.salarioPorDependenciaExtendido(self.archivoEnfocado, raiz)
+        self.informador.personalPorDependenciaExtendido(self.archivoEnfocado, hijo_1)
 
         # Application setup
         # Set the window title and size
         self.setWindowTitle("Editor De Organigramas")
         self.setGeometry(100, 100, 400, 200)
         
-        self.central_widget = OrganizationalChartWidget(raiz)
+        self.central_widget = OrganizationalChartWidget(self.archivoEnfocado)
         self.init_ui()
-        
-        # Agregar tab inicial TODO: mover a posicion adecuada en init_ui
-        tab_index = self.tab_bar_archivos.addTab(self.archivoEnfocado.organigrama.organizacion)
-        self.tab_bar_archivos.setCurrentIndex(tab_index)
-        self.tab_indexes[self.archivoEnfocado.organigrama.codigo] = tab_index
-        
+        self.ui_inicializada = True
+        print(self.archivoEnfocado.ruta)
+
+         
         QTimer.singleShot(1000, self.saveScreenshot)
         QTimer.singleShot(1000, self.save_chart_as_png)
     
@@ -588,12 +769,14 @@ class EditorDeOrganigramas(QMainWindow):
                 "actions": [
                     ("Crear Organigrama", self.crear_organigrama),
                     ("Abrir Organigrama", self.abrir_organigrama),
+                    ("Cambiar Nombre Organigrama", self.cambiar_nombre_organigrama),
+                    ("Copiar Organigrama", self.copiar_organigrama),
+                    ("Graficar Organigrama", self.graficar_organigrama),
+                    SEPARADOR_HORIZONTAL,
                     ("Crear Dependencia", self.crear_dependencia),
                     ("Eliminar Dependencia", self.eliminar_dependencia),
                     ("Modificar Dependencia", self.modificar_dependencia),
-                    ("Editar Ubicacion Dependencias", self.editar_ubicacion_dependencias),
-                    ("Copiar Organigrama", self.copiar_organigrama),
-                    ("Graficar Organigrama", self.graficar_organigrama)
+                    ("Editar Ubicacion Dependencias", self.editar_ubicacion_dependencias)
                 ]
             },
             {
@@ -610,8 +793,10 @@ class EditorDeOrganigramas(QMainWindow):
                 "actions": [
                     ("Personal Por Dependencia", self.personal_por_dependencia),
                     ("Personal por Dependencia Extendido", self.personal_por_dependencia_extendido),
+                    SEPARADOR_HORIZONTAL,
                     ("Salario por Dependencia", self.salario_por_dependencia),
                     ("Salario por Dependencia Extendido", self.salario_por_dependencia_extendido),
+                    SEPARADOR_HORIZONTAL,
                     ("Imprimir Organigrama", self.imprimir_organigrama)
                 ]
             },
@@ -644,34 +829,37 @@ class EditorDeOrganigramas(QMainWindow):
                     menu.addAction(action)
 
     def actualizar_archivos_recientes(self, submenu: QMenu):
-        # Clear the submenu first
+        # Vaciar primero el submenu
         submenu.clear()
 
-        # Obtain the recent files and add them to the submenu
+        # Obtener los archivos recientes y agregarlos al submenu
         for file_name in self.archivosRecientes:
             action = QAction(file_name, self)
-            action.triggered.connect(self.open_recent_file)
+            action.triggered.connect(self.abrir_archivo_reciente)
             submenu.addAction(action)
                 
-    def open_recent_file(self):
-        # Handle the action for opening a recent file
-        # Retrieve the selected file and open it
-        selected_file = self.sender().text()
-        # Add your code to open the file
-        self.abrirOrganigrama(selected_file)
+    def abrir_archivo_reciente(self):
+        # Obtener texto de la direccion seleccionada
+        archivo_seleccionado = self.sender().text()
+        # Abrir el archivo que esta en esa direccion
+        self.abrirOrganigrama(archivo_seleccionado)
                          
     def create_status_bar(self):
-        self.status_label = QLabel()
-        self.statusBar().addWidget(self.status_label)
-        
-        # Create a tab bar
+        # Crear un tab bar
         self.tab_bar_archivos = QTabBar(self)
         self.tab_bar_archivos.setTabsClosable(True)
         self.tab_bar_archivos.tabCloseRequested.connect(self.cerrarTabArchivo)
         self.tab_bar_archivos.tabBarClicked.connect(self.clickearTabArchivo)
         self.statusBar().addWidget(self.tab_bar_archivos)
-        # Define a dictionary to store tab indexes
+        # Definir un diccionario para guardar los indices de los tabs con el codigo de archivo como llave
         self.tab_indexes = {}
+        # Agregar archivo enfocado a los tabs
+        tab_index = self.tab_bar_archivos.addTab(self.archivoEnfocado.organigrama.organizacion)
+        self.tab_bar_archivos.setCurrentIndex(tab_index)
+        self.tab_indexes[self.archivoEnfocado.organigrama.codigo] = tab_index
+        
+        self.status_label = QLabel()
+        self.statusBar().addWidget(self.status_label)
         
         self.zoom_widget = ZoomWidget(target_widget=self.central_widget.organizational_chart)
         self.statusBar().addPermanentWidget(self.zoom_widget)
@@ -694,8 +882,28 @@ class EditorDeOrganigramas(QMainWindow):
                 error_message.exec()
                 return
 
-            # Eliminar el archivo cerrado
+            #Obtener el codigo del archivo a cerrar
             codigo_archivo_cerrado = [k for k, v in self.tab_indexes.items() if v == index_a_cerrar][0]
+            archivo_cerrado = self.archivos[codigo_archivo_cerrado]
+            # Si el archivo no tiene ruta o tubo cambios mostrar el cuadro de diálogo de confirmación de guardado
+            if (archivo_cerrado.ruta == "" or archivo_cerrado.modificado):
+                result = self.mostrar_confirmacion_guardado(archivo_cerrado)
+                if result == QMessageBox.StandardButton.Save:
+                    archivoEnfocado = self.archivoEnfocado # Preservar el archivo enfocado anterior
+                    self.archivoEnfocado = archivo_cerrado
+                    # Si el archivo ya tiene una ruta asociada simplemente guardarlo ahi
+                    if archivo_cerrado.ruta:
+                        self.guardar_organigrama()
+                    # Si el archivo no tiene una ruta asociada debemos pedir la ruta donde guardar
+                    else:
+                        self.guardar_organigrama_como()
+                    self.archivoEnfocado = archivoEnfocado # Reasignar el archivo enfocado preservado
+                elif result == QMessageBox.StandardButton.Discard:
+                    pass  # No importa, descartar archivo y cerrar el tab
+                elif result == QMessageBox.StandardButton.Cancel:
+                    return  # Cancelar, no cerrar el tab
+            
+            # Eliminar el archivo cerrado
             self.archivos.pop(codigo_archivo_cerrado)
             self.tab_indexes.pop(codigo_archivo_cerrado)
             
@@ -730,21 +938,67 @@ class EditorDeOrganigramas(QMainWindow):
         # Si no, usar comportamiento normal de scroll
         else:
             super().wheelEvent(event)
-                              
+   
+    # Sobreescribir el evento de cerrado para poder guardar cambios que no se han guardado
+    def closeEvent(self, event : QCloseEvent):
+        archivos_sin_guardar : list[Archivo] = []
+        for archivo_code in self.tab_indexes.keys():
+            archivo = self.archivos.get(archivo_code)
+            # Si el archivo no tiene ruta asociada (nunca fue guardado) o fue modificado sin guardar
+            if archivo and (not archivo.ruta or archivo.modificado):
+                archivos_sin_guardar.append(archivo)
+
+        if archivos_sin_guardar:
+            for archivo in archivos_sin_guardar:
+                result = self.mostrar_confirmacion_guardado(archivo)
+                if result == QMessageBox.StandardButton.Save:
+                    self.archivoEnfocado = archivo
+                    # Si el archivo ya tiene una ruta asociada simplemente guardarlo ahi
+                    if archivo.ruta:
+                        self.guardar_organigrama()
+                    # Si el archivo no tiene una ruta asociada debemos pedir la ruta donde guardar
+                    else:
+                        self.guardar_organigrama_como()
+                elif result == QMessageBox.StandardButton.Discard:
+                    pass  # Discard changes
+                elif result == QMessageBox.StandardButton.Cancel:
+                    event.ignore()  # Cancel application close
+
+            if event.isAccepted():
+                event.accept()  # Accept application close
+        else:
+            event.accept()  # Accept application close
+ 
+    def mostrar_confirmacion_guardado(self, archivo):
+        """Cuadro de confirmación que pregunta si guardar un archivo, descartar cambios o cancelar la acción"""
+        message_box = QMessageBox()
+        message_box.setWindowTitle("Guardar archivo")
+        message_box.setText(f"El archivo '{archivo.organigrama.organizacion}' no está guardado. ¿Desea guardarlo?")
+
+        save_button = message_box.addButton(QMessageBox.StandardButton.Save)
+        save_button.setText("Guardar")
+        discard_button = message_box.addButton(QMessageBox.StandardButton.Discard)
+        discard_button.setText("Descartar")
+        cancel_button = message_box.addButton(QMessageBox.StandardButton.Cancel)
+        cancel_button.setText("Cancelar")
+
+        message_box.setDefaultButton(QMessageBox.StandardButton.Save)
+        return message_box.exec()
+     
     def mouse_move_event(self, event):
         # Handle mouse move event
         pos = event.pos()
-        self.status_label.setText(f"Mouse position: ({pos.x()}, {pos.y()})")
+        # self.status_label.setText(f"Mouse position: ({pos.x()}, {pos.y()})")
 
     def mouse_press_event(self, event):
         # Handle mouse press event
         pos = event.pos()
-        self.status_label.setText(f"Mouse clicked at: ({pos.x()}, {pos.y()})")
+        # self.status_label.setText(f"Mouse clicked at: ({pos.x()}, {pos.y()})")
 
     def mouse_release_event(self, event):
         # Handle mouse release event
         pos = event.pos()
-        self.status_label.setText(f"Mouse released at: ({pos.x()}, {pos.y()})")
+        # self.status_label.setText(f"Mouse released at: ({pos.x()}, {pos.y()})")
         #self.status_label.clear()
         
     def escribir_archivo (self, nombre_archivo, datos) -> None:
@@ -828,27 +1082,33 @@ class EditorDeOrganigramas(QMainWindow):
         # Retornar el archivo leido
         return archivo
     
+    # TODO: implementar autoguardado (Funcion inovadadora)
     def autoGuardadoDeOrganigramas(self):
         pass
     
     def guardarOrganigrama(self, archivo: Archivo):
-        # Si el archivo no tiene ruta tirar error
         if not archivo.ruta:
-            raise FileNotFoundError() # TODO: mensaje de error
+            raise FileNotFoundError(
+                f"El archivo del organigrama '{archivo.organigrama.organizacion}' no tiene una ruta asociada.") 
         else:
+            archivo.modificado = False # Se guardan los cambios por lo tanto el archivo no estara modificado
             self.escribir_archivo(archivo.ruta, archivo)
         
     def guardarOrganigramaComo(self, archivo: Archivo, rutaDondeGuardar: str):
         archivo.ruta = rutaDondeGuardar
         self.guardarOrganigrama(archivo)
                 
-    def copiarOrganigrama(self, codigoOrg, organizacion, fecha):
-        orgCopy : Archivo = copy.deepcopy(self.archivos[codigoOrg])
+    def copiarOrganigrama(self, archivo: Archivo, organizacion: str, fecha: str):
+        orgCopy : Archivo = copy.deepcopy(archivo)
         orgCopy.organigrama.codigo = self.crearCodigoOrganigrama()
         orgCopy.organigrama.organizacion = organizacion
         orgCopy.organigrama.fecha = fecha
+        orgCopy.ruta = ""
+        orgCopy.modificado = False
         orgCopy.personasPorCodigo = {}
         orgCopy.quitarCodres(orgCopy.raiz)
+        self.archivos[orgCopy.organigrama.codigo] = orgCopy
+        return orgCopy
 
     def getText(self, title, message, regex : Tuple[str, str] = None, bounds = None):
         dialog = QInputDialog(self)
@@ -906,23 +1166,31 @@ class EditorDeOrganigramas(QMainWindow):
             dialog = DateInputDialog(self)
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 fecha = dialog.getDate()
-                self.crearOrganigrama(nombre, fecha)
+                nuevoArchivo : Archivo = self.crearOrganigrama(nombre, fecha)
+                # Enfocar el nuevo archivo
+                self.archivoEnfocado = nuevoArchivo     
+                # Agregar tab con el nuevo organigrama
+                tab_index = self.tab_bar_archivos.addTab(nuevoArchivo.organigrama.organizacion)
+                self.tab_bar_archivos.setCurrentIndex(tab_index)
+                self.tab_indexes[nuevoArchivo.organigrama.codigo] = tab_index
 
     def abrir_organigrama(self):
         # Dialogo de abrir archivo
-        file_dialog = QFileDialog()
-        file_dialog.setNameFilter("Archivos de Organigrama (*.org)")
-        file_dialog.setDefaultSuffix("org")
-        file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
+        dialogo_archivo = QFileDialog()
+        dialogo_archivo.setNameFilter("Archivos de Organigrama (*.org)")
+        dialogo_archivo.setDefaultSuffix("org")
+        dialogo_archivo.setFileMode(QFileDialog.FileMode.ExistingFile)
         
-        if file_dialog.exec() == QFileDialog.DialogCode.Accepted:
-            selected_files = file_dialog.selectedFiles()
-            if selected_files:
-                file_path = selected_files[0]
+        if dialogo_archivo.exec() == QFileDialog.DialogCode.Accepted:
+            archivos_selecionados = dialogo_archivo.selectedFiles()
+            if archivos_selecionados:
+                ruta_archivo = archivos_selecionados[0]
                 # Perform operations with the selected file
-                self.abrirOrganigrama(file_path)
+                self.abrirOrganigrama(ruta_archivo)
     
     def guardar_organigrama(self):
+        # TODO: remover print
+        print(self.archivoEnfocado.ruta)
         # Si el archivo enfocado ya tiene una ruta de guardado, simplemente guardar
         if self.archivoEnfocado.ruta:
             self.guardarOrganigrama(self.archivoEnfocado)
@@ -931,11 +1199,42 @@ class EditorDeOrganigramas(QMainWindow):
             self.guardar_organigrama_como()
     
     def guardar_organigrama_como(self):
-        self.guardarOrganigramaComo()
-        pass
+        nombre_predenterminado = f"{self.archivoEnfocado.organigrama.organizacion}.org"
+        dialogo_archivo = QFileDialog()
+        ruta_archivo, _ = dialogo_archivo.getSaveFileName(
+            caption="Guardar Organigrama",
+            directory=nombre_predenterminado,
+            filter="Organigrama Files (*.org)"
+        )
+        if ruta_archivo:
+            self.guardarOrganigramaComo(self.archivoEnfocado, ruta_archivo)
 
+    def cambiar_nombre_organigrama(self):
+        nombreNuevo, ok = self.getText(
+            "Cambiar Nombre Organigrama", 
+            "Ingrese el nuevo nombre para la organización:", 
+            regex=OrganigramaRegex.patrones['organizacion'])
+        if ok and nombreNuevo:
+            self.archivoEnfocado.organigrama.organizacion = nombreNuevo
+            # Actualizar nombre de tab
+            self.tab_bar_archivos.setTabText(self.tab_bar_archivos.currentIndex(), nombreNuevo)
+    
     def copiar_organigrama(self):
-        pass
+        nombre, ok = self.getText(
+        "Copiar Organigrama", 
+        "Ingrese el nombre de la organización copiada:", 
+        regex=OrganigramaRegex.patrones['organizacion'])
+        if ok and nombre:
+            dialog = DateInputDialog(self)
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                fecha = dialog.getDate()
+                nuevoArchivo : Archivo = self.copiarOrganigrama(self.archivoEnfocado, nombre, fecha)
+                # Enfocar el nuevo archivo
+                self.archivoEnfocado = nuevoArchivo 
+                # Agregar tab con el nuevo organigrama
+                tab_index = self.tab_bar_archivos.addTab(nuevoArchivo.organigrama.organizacion)
+                self.tab_bar_archivos.setCurrentIndex(tab_index)
+                self.tab_indexes[nuevoArchivo.organigrama.codigo] = tab_index
 
     def crear_dependencia(self):
         pass
@@ -962,25 +1261,48 @@ class EditorDeOrganigramas(QMainWindow):
         pass        
 
     def personal_por_dependencia(self):
-        Informes.salarioPorDependenciaExtendido(self.archivoEnfocado)
-        pass
+        dialog = DependencySelectionDialog(self.archivoEnfocado.raiz)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            nodo_seleccionado = dialog.selected_node()
+            rutaPDF = self.informador.personalPorDependencia(self.archivoEnfocado, nodo_seleccionado.data)
+            if rutaPDF:
+                pdf_popup = PDFPopupWindow(rutaPDF)
+                pdf_popup.exec()
 
     def personal_por_dependencia_extendido(self):
-        pass
+        dialog = DependencySelectionDialog(self.archivoEnfocado.raiz)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            nodo_seleccionado = dialog.selected_node()
+            rutaPDF = self.informador.personalPorDependenciaExtendido(self.archivoEnfocado, nodo_seleccionado)
+            if rutaPDF:
+                pdf_popup = PDFPopupWindow(rutaPDF)
+                pdf_popup.exec()
 
     def salario_por_dependencia(self):
-        pass
+        dialog = DependencySelectionDialog(self.archivoEnfocado.raiz)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            nodo_seleccionado = dialog.selected_node()
+            rutaPDF = self.informador.salarioPorDependencia(self.archivoEnfocado, nodo_seleccionado.data)
+            if rutaPDF:
+                pdf_popup = PDFPopupWindow(rutaPDF)
+                pdf_popup.exec()
 
     def salario_por_dependencia_extendido(self):
-        pass
-
+        dialog = DependencySelectionDialog(self.archivoEnfocado.raiz)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            nodo_seleccionado = dialog.selected_node()
+            rutaPDF = self.informador.salarioPorDependenciaExtendido(self.archivoEnfocado, nodo_seleccionado)
+            if rutaPDF:
+                pdf_popup = PDFPopupWindow(rutaPDF)
+                pdf_popup.exec()
+        
     def imprimir_organigrama(self):
         pass
 
     def graficar_organigrama(self):
         pass
 
-
+    
     
         
 
@@ -989,5 +1311,3 @@ if __name__ == '__main__':
     window = EditorDeOrganigramas()
     window.showMaximized()
     app.exec()
-
-
