@@ -9,12 +9,12 @@ def marcar_archivo_modificado(func):
         for arg in args:
             if isinstance(arg, Archivo):
                 # TODO: remover print
-                print(f"marcando {arg} como modificado con decorador")
+                #print(f"marcando {arg} como modificado con decorador")
                 arg.modificado = True
         for arg in kwargs.values():
             if isinstance(arg, Archivo):
                 # TODO: remover print
-                print(f"marcando {arg} como modificado con decorador")
+                #print(f"marcando {arg} como modificado con decorador")
                 arg.modificado = True
         return func(*args, **kwargs)
     return wrapper
@@ -107,7 +107,11 @@ class Archivo():
         nodo = self.raiz.buscar_nodo(codigoDependencia, NodoArbol.compararCodigo) #Retorna el nodo que tiene el codigo indicado en el argumento
 
         padre : NodoArbol = nodo.padre(self.raiz)
-        padre.eliminar_hijo(nodo)
+        # Si el nodo no tiene padre significa que es la raiz del archivo
+        if padre is None:
+            self.raiz = None
+        else:
+            padre.eliminar_hijo(nodo)
         self.eliminarNodoYSucesores(nodo)
 
     @marcar_archivo_modificado
@@ -115,10 +119,13 @@ class Archivo():
         """Elimina los sucesores de la dependencia "base" y desasigna a sus trabajadores """
         self.desasignarPersonasDeDependencia(base.data.codigo)
         self.dependenciasPorCodigo.remove(base.data.codigo)
-        for nodo in base.children:
+        
+        # Crear una copia de la lista de hijos para no editar la lista que iteramos para la recursion
+        nodos_a_remover = [nodo for nodo in base.children]
+
+        for nodo in nodos_a_remover:
             base.children.remove(nodo)
             self.eliminarNodoYSucesores(nodo)
-        del base
     
     @marcar_archivo_modificado 
     def modificarDependencia(self, codigoDependencia = None, nombre_nuevo = None, codresNuevo = None):
@@ -128,18 +135,18 @@ class Archivo():
 
         nodoDep : NodoArbol = self.raiz.buscar_nodo(codigoDependencia, NodoArbol.compararCodigo)
                 
-        if nombre_nuevo != None: 
+        if nombre_nuevo is not None: 
             nodoDep.data.nombre = nombre_nuevo
-        if codresNuevo in self.personasPorCodigo.keys():
-
-            #Caso donde la persona pertenece a otra dependencia y es jefe de ella
-            self.raiz.recorrerOrganigrama(codresNuevo, NodoArbol.quitarJefe)
-            self.personasPorCodigo[codresNuevo].dependencia = nodoDep.data.codigo
-            nodoDep.data.codigoResponsable = codresNuevo
-
-        else:
-            raise ValueError("""No se puede asignar la persona como responsable
-                              de la dependencia ya que no existe!""")
+            
+        if codresNuevo is not None:
+            if codresNuevo in self.personasPorCodigo.keys():
+                #Caso donde la persona pertenece a otra dependencia y es jefe de ella
+                self.raiz.recorrerOrganigrama(codresNuevo, NodoArbol.quitarJefe)
+                self.personasPorCodigo[codresNuevo].dependencia = nodoDep.data.codigo
+                nodoDep.data.codigoResponsable = codresNuevo
+            else:
+                raise ValueError("""No se puede asignar la persona como responsable
+                                de la dependencia ya que no existe!""")
 
     @marcar_archivo_modificado  
     def editarUbicacionDependencia(self, nodoMover: NodoArbol, nuevoNodoPadre: NodoArbol):
