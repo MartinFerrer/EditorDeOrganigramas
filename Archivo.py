@@ -22,27 +22,24 @@ def marcar_archivo_modificado(func):
 class Archivo():
 
     def __init__(self) -> None:
-        self.ruta : str = ""
+        self.ruta: str = ""
         """Ruta donde se guarda el archivo""" 
         
-        self.modificado : bool = False
+        self.modificado: bool = False
         """Bandera que determina si el archivo tiene cambios sin guardar"""
         
-        self.organigrama : Organigrama = Organigrama()
+        self.organigrama: Organigrama = Organigrama()
         """Informacion acerca del organigrama"""
 
-        self.raiz : NodoArbol = NodoArbol(None)
+        self.raiz: NodoArbol = None
         """Raiz del arbol con dependencias que representan al organigrama"""
 
-        self.dependenciasPorCodigo : list[str] = []
-        """Un diccionario relacionando a los objetos de Dependencia con su codigo de 3 digitos"""
+        self.codigosDeDependencias: list[str] = []
+        """Una lista que contiene todos los codigos de dependencias utilizados"""
 
-        self.personasPorCodigo : dict[str, Persona] = {}
+        self.personasPorCodigo: dict[str, Persona] = {}
         """Un diccionario relacionando a los objetos de personas con su codigo de 4 digitos"""
-
-        self.codigoPersonaMasAlto : int = -1
-        self.codigoDependenciaMasAlto : int = -1
-        
+  
     # Sobreescribir para asignar que se modifico el archivo si alguna de las propiedades es asignada
     def __setattr__(self, name, value):
         if name != "modificado" and name != "ruta":
@@ -54,30 +51,20 @@ class Archivo():
     @marcar_archivo_modificado
     def generarCodigoDependencia(self): 
         """Genera codigo de dependencia y verifica que no exista.""" 
-        if self.codigoDependenciaMasAlto != 999:
-            codigo = self.codigoDependenciaMasAlto + 1
-            self.codigoDependenciaMasAlto = codigo
-            return str(codigo).zfill(3)
-        else:
-            for i in range(1000):
-                codigo = str(i).zfill(3)
-                if codigo not in self.dependenciasPorCodigo:
-                    return codigo
-            raise RuntimeError("No se pudo generar codigo para dependencia! No hay codigos disponibles.")
+        for i in range(1000):
+            codigo = str(i).zfill(3)
+            if codigo not in self.codigosDeDependencias:
+                return codigo
+        raise RuntimeError("No se pudo generar codigo para dependencia! No hay codigos disponibles.")
     
     @marcar_archivo_modificado
     def generarCodigoPersona(self):
         """Genera codigo de persona y verifica que no exista.""" 
-        if self.codigoPersonaMasAlto != 9999:
-            codigo = self.codigoPersonaMasAlto + 1
-            self.codigoPersonaMasAlto = codigo
-            return str(codigo).zfill(4)
-        else:
-            for i in range(10000):
-                codigo = str(i).zfill(4)
-                if codigo not in self.personasPorCodigo.keys():
-                    return codigo
-            raise RuntimeError("No se pudo generar codigo para persona! No hay codigos disponibles.")
+        for i in range(10000):
+            codigo = str(i).zfill(4)
+            if codigo not in self.personasPorCodigo.keys():
+                return codigo
+        raise RuntimeError("No se pudo generar codigo para persona! No hay codigos disponibles.")
     
     @marcar_archivo_modificado
     def quitarCodres(self, raiz : NodoArbol):
@@ -93,19 +80,18 @@ class Archivo():
         nodo = NodoArbol(dep)
 
         #Caso que sea la primera dependencia agregada en el organigrama
-        if nodoPadre.data == None:
-            nodoPadre.data = dep
+        if self.raiz is None:
+            self.raiz = nodo
         else:
             nodoPadre.agregar_hijo(nodo)
             
-        self.dependenciasPorCodigo.append(cod)
+        self.codigosDeDependencias.append(cod)
     
     @marcar_archivo_modificado
-    def eliminarDependencia(self, codigoDependencia):
+    def eliminarDependencia(self, nodo: NodoArbol):
         """Permite eliminar una dependencia existente y todas las 
            dependencias sucesoras de la misma."""
-        nodo = self.raiz.buscar_nodo(codigoDependencia, NodoArbol.compararCodigo) #Retorna el nodo que tiene el codigo indicado en el argumento
-
+           
         padre : NodoArbol = nodo.padre(self.raiz)
         # Si el nodo no tiene padre significa que es la raiz del archivo
         if padre is None:
@@ -118,7 +104,7 @@ class Archivo():
     def eliminarNodoYSucesores(self, base: 'NodoArbol'): 
         """Elimina los sucesores de la dependencia "base" y desasigna a sus trabajadores """
         self.desasignarPersonasDeDependencia(base.data.codigo)
-        self.dependenciasPorCodigo.remove(base.data.codigo)
+        self.codigosDeDependencias.remove(base.data.codigo)
         
         # Crear una copia de la lista de hijos para no editar la lista que iteramos para la recursion
         nodos_a_remover = [nodo for nodo in base.children]
@@ -127,12 +113,12 @@ class Archivo():
             base.children.remove(nodo)
             self.eliminarNodoYSucesores(nodo)
     
+    
     @marcar_archivo_modificado 
     def modificarDependencia(self, codigoDependencia = None, nombre_nuevo = None, codresNuevo = None):
         """Permite modificar los atributos de la dependencia sin
                     modificar su ubicación en el organigrama."""
-
-
+                    
         nodoDep : NodoArbol = self.raiz.buscar_nodo(codigoDependencia, NodoArbol.compararCodigo)
                 
         if nombre_nuevo is not None: 
@@ -141,7 +127,8 @@ class Archivo():
         if codresNuevo is not None:
             if codresNuevo in self.personasPorCodigo.keys():
                 #Caso donde la persona pertenece a otra dependencia y es jefe de ella
-                self.raiz.recorrerOrganigrama(codresNuevo, NodoArbol.quitarJefe)
+                self.raiz.recorrer_arbol(NodoArbol.quitarJefe, codresNuevo)
+                # Asignar jefe de dependencia
                 self.personasPorCodigo[codresNuevo].dependencia = nodoDep.data.codigo
                 nodoDep.data.codigoResponsable = codresNuevo
             else:
@@ -156,45 +143,35 @@ class Archivo():
         nuevoNodoPadre.agregar_hijo(nodoMover)
 
     @marcar_archivo_modificado
-    def ingresarPersona(self, nom, ape, ci, tel, dir, salario):
-        cod = self.generarCodigoPersona()
-        persona = Persona(codigo = cod, 
-                          nombre = nom, 
-                          apellido = ape, 
-                          documento = ci, 
-                          telefono = tel, 
-                          direccion = dir, 
-                          salario = salario)
-        self.personasPorCodigo[cod] = persona
+    def ingresarPersona(self, persona: Persona):
+        """Genera el codigo para el objeto persona y lo ingresa en el diccionario personasPorCodigo"""
+        persona.codigo = self.generarCodigoPersona()
+        self.personasPorCodigo[persona.codigo] = persona
         
     @marcar_archivo_modificado   
     def eliminarPersona(self, codigo_persona):
-        self.raiz.recorrerOrganigrama(codigo_persona, NodoArbol.quitarJefe)
+        self.raiz.recorrer_arbol(NodoArbol.quitarJefe, codigo_persona)
         self.personasPorCodigo.pop(codigo_persona)
     
     @marcar_archivo_modificado    
-    def modificarPersona(self, persona_nueva : Persona):
-        # TODO: cambiar para poder utilizar parametros opcionales?
-        persona_destino = self.personasPorCodigo[persona_nueva.codigo]
-        persona_destino.dependencia = persona_nueva.dependencia
-        persona_destino.nombre = persona_nueva.nombre
-        persona_destino.apellido = persona_nueva.apellido
-        persona_destino.telefono = persona_nueva.telefono
-        persona_destino.direccion = persona_nueva.direccion
-        persona_destino.salario = persona_nueva.salario
+    def modificarPersona(self, codigo_persona_modificada, datos_nuevos : Persona):
+        persona_destino = self.personasPorCodigo[codigo_persona_modificada]
+        persona_destino.nombre = datos_nuevos.nombre
+        persona_destino.apellido = datos_nuevos.apellido
+        persona_destino.telefono = datos_nuevos.telefono
+        persona_destino.direccion = datos_nuevos.direccion
+        persona_destino.salario = datos_nuevos.salario
     
     @marcar_archivo_modificado  
-    def asignarPersonaADependencia(self, cod_persona, codigoDependencia, esJefe):
-
-        # def compararCodigo(nodo : NodoArbol, codigo):
-        #     return nodo.data.codigo == codigo
+    def asignarPersonaADependencia(self, codigo_persona, codigo_dependencia):
+        #Caso donde la persona pertenece a otra dependencia y es jefe de ella
+        self.raiz.recorrer_arbol(NodoArbol.quitarJefe, codigo_persona)
         
-        persona = self.personasPorCodigo[cod_persona]
-        persona.dependencia = codigoDependencia
-        if esJefe:
-            nodo = self.raiz.buscar_nodo(codigoDependencia, NodoArbol.compararCodigo)
-            nodo.data.codigoResponsable = cod_persona
-    
+        # Asignar persona a la dependencia
+        persona = self.personasPorCodigo[codigo_persona]
+        persona.dependencia = codigo_dependencia
+            
+
     @marcar_archivo_modificado   
     def desasignarPersonasDeDependencia(self, codigo_dependencia):
         for persona in self.personasPorCodigo.values():

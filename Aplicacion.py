@@ -5,6 +5,7 @@ import copy
 import datetime
 import pickle
 import pickletools
+import pprint
 
 import numpy as np
 import graphviz
@@ -12,10 +13,10 @@ import graphviz
 from functools import partial
 from PyQt6.QtCore import (
     Qt, QPoint, QPointF, QSize, QTimer, QDate, pyqtSignal, QLocale, QRegularExpression, QUrl,
-    QFile)
+    QFile, QMargins, QVariant)
 from PyQt6.QtGui import (
     QAction, QMouseEvent, QWheelEvent, QIcon, QFont, QColor, QPen, QPainter, QPixmap, QImage, 
-    QRegularExpressionValidator, QValidator, QIntValidator, QCloseEvent, QDesktopServices, QPageSize
+    QRegularExpressionValidator, QValidator, QIntValidator, QCloseEvent, QDesktopServices, QPageSize, QCursor
 )
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QLabel, QToolBar, QDockWidget, QLineEdit, QPushButton, QTextEdit,
@@ -23,7 +24,7 @@ from PyQt6.QtWidgets import (
     QFrame, QStyleFactory, QMenu, QMessageBox, QInputDialog, QDateEdit, QCalendarWidget, QDialog,
     QApplication, QMainWindow, QWidget, QVBoxLayout, QGraphicsScene, QGraphicsView,
     QGraphicsRectItem, QGraphicsTextItem, QGraphicsLineItem, QGraphicsPixmapItem, QDialogButtonBox,
-    QTabBar, QTabWidget, QFileDialog, QApplication, QScrollArea, QComboBox
+    QTabBar, QTabWidget, QFileDialog, QApplication, QScrollArea, QComboBox, QListWidget, QListWidgetItem
 )
 from PyQt6.QtSvg import QSvgRenderer
 from PyQt6.QtSvgWidgets import QGraphicsSvgItem
@@ -94,8 +95,21 @@ class OrganizationalChartView(QGraphicsView):
 
     #     self.draw_node(self.root, root_x, root_y, node_width, node_height)
 
-    # TODO: opcion para dibujar solo el subarbol de una dependencia/nodo, no el arbol competo
-    # TODO: mostrar el nombre del jefe bajo el nombre de la dependencia
+
+    def draw_tree_to_pdf(self, raiz: NodoArbol, file_path: str) -> str:
+        # Generar el grafo con GraphViz
+        dot = graphviz.Digraph(format='pdf')
+        self.draw_node(dot, raiz)
+
+        dot.graph_attr.update(
+            splines='ortho', 
+            rankdir='TB',
+            fontname='helvetica')
+    
+        dot.render(filename=file_path, cleanup=True)
+        return file_path + ".pdf"
+
+
     # TODO: hacer que las flechas se comporten 100% como un organigrama
     def draw_tree(self):
         self.scene().clear()
@@ -110,7 +124,8 @@ class OrganizationalChartView(QGraphicsView):
         dot.graph_attr.update(
             #layout='dot',
             splines='ortho', 
-            rankdir='TB')
+            rankdir='TB',
+            fontname='helvetica')
     
         # Renderizar el grafo como SVG y dibujarlo en la QGraphicsScene del widget
         svg_item = QGraphicsSvgItem()
@@ -132,7 +147,11 @@ class OrganizationalChartView(QGraphicsView):
         if jefe:
             nombre = jefe.nombre
             apellido = jefe.apellido
-        dot.node(str(id(node)), label=f"{node.data}({node.data.codigo})\n Jefe: {nombre}, {apellido}", shape="rectangle")
+        # TODO arreglar
+        tituloNodo = f"{node.data}"
+        if node.data is not None:
+            tituloNodo = f"{node.data}({node.data.codigo})"
+        dot.node(str(id(node)), label=f"{tituloNodo}\n Jefe: {nombre}, {apellido}", shape="rectangle")
 
         # Recursively add nodes for each child node
         for child in node.children:
@@ -156,7 +175,6 @@ class OrganizationalChartWidget(QWidget):
         self.organizational_chart.draw_tree()
 
 class ZoomWidget(QWidget):
-    
     
     def __init__(self, target_widget: QGraphicsView, minimum_zoom: int = 10, maximum_zoom: int = 400, parent=None):
         super().__init__(parent)
@@ -193,8 +211,6 @@ class ZoomWidget(QWidget):
         layout.setSpacing(0)  # Set spacing between items
         layout.addStretch(1)  # Add stretch to align items to the right
 
-        
-        # TODO: Try QToolButton with autorepeat to simplify timer logic? (not worth maybe since this works already..)
         button_style = """
             QPushButton {
                 background-color: transparent;
@@ -335,7 +351,7 @@ class ZoomWidget(QWidget):
         step = 10  # Set the zoom step
         zoom_value = self.zoom_slider.value()
         new_zoom_value = max(self.minimum_zoom, min(self.maximum_zoom , zoom_value + (delta * step)))
-        self.zoom_slider.setValue(new_zoom_value)
+        self.zoom_slider.setValue(int(new_zoom_value))
 
 class DateInputDialog(QDialog):
     accepted = pyqtSignal()
@@ -350,7 +366,7 @@ class DateInputDialog(QDialog):
         calendar_widget.setVerticalHeaderFormat(QCalendarWidget.VerticalHeaderFormat.NoVerticalHeader)
         calendar_widget.setHorizontalHeaderFormat(QCalendarWidget.HorizontalHeaderFormat.ShortDayNames)
         calendar_widget.setFirstDayOfWeek(Qt.DayOfWeek.Monday)
-        calendar_widget.setLocale(QLocale())
+        calendar_widget.setLocale(QLocale.system())
         calendar_widget.setMinimumDate(QDate(1900, 1, 1))
         calendar_widget.setMaximumDate(QDate(2100, 12, 31))
         calendar_widget.setSelectedDate(QDate.currentDate())
@@ -370,16 +386,17 @@ class DateInputDialog(QDialog):
         return self.calendar_widget.selectedDate().toPyDate()
 
 class SelecionDeDependenciaDialog(QDialog):
-    def __init__(self, root_node: NodoArbol, nodos_a_excluir: list[NodoArbol] = []):
-        super().__init__()
-        self.setWindowTitle("Dependency Selection")
-        self.setWindowIcon(QIcon(".\Icono.ico")) # TODO: Verificar si hace falta
+    NodoArbolRole = Qt.ItemDataRole.UserRole + 1  # Custom role for storing persona object
+    
+    def __init__(self, root_node: NodoArbol, nodos_a_excluir: list[NodoArbol] = [], titulo: str = "", parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(titulo)
         self.setMinimumWidth(250)
         self.layout = QVBoxLayout()
-        self.comboBox = QComboBox()
-        self.node_dict = {}
-        self.populate_dropdown(root_node, nodos_a_excluir)
-        self.layout.addWidget(self.comboBox)
+
+        self.list_widget = QListWidget()
+        self.populate_list(root_node, nodos_a_excluir)
+        self.layout.addWidget(self.list_widget)
 
         self.button = QPushButton("Select")
         self.button.clicked.connect(self.accept)
@@ -387,40 +404,138 @@ class SelecionDeDependenciaDialog(QDialog):
 
         self.setLayout(self.layout)
 
-    def populate_dropdown(self, node: NodoArbol, nodos_a_excluir : list[NodoArbol]):
+    def populate_list(self, node: NodoArbol, nodos_a_excluir: list[NodoArbol]):
         if node not in nodos_a_excluir:
-            self.comboBox.addItem(node.data.nombre)  # Add the current node to the dropdown
-            self.node_dict[node.data.nombre] = node  # Store node reference in dictionary
+            list_item = QListWidgetItem(node.data.nombre)
+            list_item.setData(self.NodoArbolRole, node)  # Set the node reference as data
+            self.list_widget.addItem(list_item)
             for child in node.children:
-                self.populate_dropdown(child, nodos_a_excluir)  # Recursively add child nodes
+                self.populate_list(child, nodos_a_excluir)
 
     def selected_node(self) -> NodoArbol:
-        selected_node_text = self.comboBox.currentText()
-        return self.node_dict[selected_node_text]
+        selected_list_item = self.list_widget.currentItem()
+        return selected_list_item.data(self.NodoArbolRole)
+
+class DatosPersonaDialog(QDialog):
+    def __init__(self, persona:Persona = None, titulo = "", parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Crear Persona")
+        self.layout = QVBoxLayout(self)
+        
+        self.inputs: dict[str, QLineEdit] = {}
+        self.error_labels: dict[str, QLabel] = {}
+
+        for prop, (regex, error_message) in PersonaRegex.patrones.items():
+            if prop == "codigo" or prop == "dependencia":
+                continue
+
+            label = QLabel(prop.capitalize() + ":")
+            self.layout.addWidget(label)
+
+            input_field = QLineEdit()
+            self.layout.addWidget(input_field)
+            self.inputs[prop] = input_field
+
+            validator = QRegularExpressionValidator(QRegularExpression(regex), self)
+            input_field.setValidator(validator)
+
+            error_label = QLabel(self)
+            error_label.setStyleSheet("color: red")
+            error_label.setText(error_message)
+            error_label.setVisible(False)
+            self.layout.addWidget(error_label)
+            self.error_labels[prop] = error_label
+
+            def update_error_label():
+                input_field: QLineEdit = self.sender()
+                prop = next(key for key, value in self.inputs.items() if value is input_field)
+                error_label = self.error_labels[prop]
+                if input_field.hasAcceptableInput():
+                    error_label.setVisible(False)
+                else:
+                    error_label.setVisible(True)
+
+            input_field.inputRejected.connect(update_error_label)
+            input_field.textChanged.connect(update_error_label)
+
+        self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        self.buttons.accepted.connect(self.accept)
+        self.buttons.rejected.connect(self.reject)
+        self.layout.addWidget(self.buttons)
+        if persona is not None:
+            self.fill_input_fields(persona)
+
+    def fill_input_fields(self, persona: Persona):
+        for prop, input_field in self.inputs.items():
+            if hasattr(persona, prop):
+                value = getattr(persona, prop)
+                if value is not None:
+                    input_field.setText(str(value))
+                
+    def get_persona(self):
+            datos_persona = {}
+            for propiedad, input_field in self.inputs.items():
+                valor = input_field.text()
+                if propiedad == "salario":
+                    if valor == "":
+                        valor = 0
+                    else:
+                        valor = int(valor)  # Convertir entrada de salario a entero
+                datos_persona[propiedad] = valor
+
+            persona = Persona(**datos_persona) # Pasar todas las propiedades como argumento de constructor
+            return persona
  
+class PersonaSelectionDialog(QDialog):
+    PersonaRole = Qt.ItemDataRole.UserRole + 1  # Custom role for storing persona object
+
+    def __init__(self, personas : list[Persona], titulo: str = "", parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(titulo)
+        layout = QVBoxLayout(self)
+
+        self.personas_list = QListWidget(self)
+        layout.addWidget(self.personas_list)
+
+        for persona in personas:
+            item = QListWidgetItem(f"{persona.nombre} {persona.apellido}")
+            item.setData(self.PersonaRole, QVariant(persona))
+            self.personas_list.addItem(item)
+
+        self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        layout.addWidget(self.buttons)
+
+        self.buttons.accepted.connect(self.accept)
+        self.buttons.rejected.connect(self.reject)
+
+    def get_persona_seleccionada(self) -> Persona:
+        selected_item = self.personas_list.currentItem()
+        if selected_item:
+            return selected_item.data(self.PersonaRole)
+        else:
+            return None
+    
 class PDFPopupWindow(QDialog):
-    def __init__(self, pdf_path):
-        super().__init__()
-        self.setWindowTitle("PDF Viewer")
+    def __init__(self, pdf_path, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Visualizador de PDF")
         self.pdf_path = pdf_path
         
         layout = QVBoxLayout()
         self.setLayout(layout)
             
-        self.setWindowTitle("PDF Viewer")
-        self.setWindowIcon(QIcon(".\Icono.ico")) # TODO: Verificar si hace falta
         # No permitir cambiar el tamaño de la ventana popup
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.MSWindowsFixedSizeDialogHint) 
         self.pdf_path = pdf_path
 
         # Create a QScrollArea to display the PDF content
         scroll_area = QScrollArea()
-        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         layout.addWidget(scroll_area)
 
         # Create a QWidget to contain the rendered PDF pages
         pdf_widget = QWidget()
         pdf_layout = QVBoxLayout()
+        pdf_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         pdf_widget.setLayout(pdf_layout)
         scroll_area.setWidget(pdf_widget)
 
@@ -461,6 +576,11 @@ class PDFPopupWindow(QDialog):
 
         # Add the button layout to the main layout
         layout.addLayout(button_layout)
+        
+        # Calculate the desired size based on the content
+        desired_width = min(layout.sizeHint().width() + 100, self.parentWidget().width() // 2)
+        desired_height = min(layout.sizeHint().height() + 200, self.parentWidget().height() // 2)
+        self.resize(desired_width, desired_height)
 
     # TODO:fix
     def print_pdf(self):
@@ -502,12 +622,6 @@ class PDFPopupWindow(QDialog):
             #except BaseException:
             #    print("Error occurred while printing the PDF.")
             
-    def get_max_page_count(printer_handle):
-        printer_info = win32print.GetPrinter(printer_handle, 2)
-        dev_mode = printer_info["pDevMode"]
-        max_page_count = dev_mode.DefaultSource # or any other attribute that represents the maximum page count
-        return max_page_count    
-    
     def save_pdf(self):
         file_dialog = QFileDialog()
         file_dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
@@ -517,7 +631,6 @@ class PDFPopupWindow(QDialog):
             QFile.copy(self.pdf_path, file_path)
 
                
-# TODO: mostrar en algun lugar de la interfaz la fecha del organigrama?
 class EditorDeOrganigramas(QMainWindow):
     @property
     def archivoEnfocado(self):
@@ -529,15 +642,18 @@ class EditorDeOrganigramas(QMainWindow):
         self.refrescarVisualizacionOrganigrama(value)
 
     # TODO: mover
-    def refrescarVisualizacionOrganigrama(self, archivo, raiz = None):
+    def refrescarVisualizacionOrganigrama(self, archivo: Archivo, raiz: NodoArbol = None):
         if self.ui_inicializada:
-            self.central_widget.organizational_chart.archivo = archivo
+            chart = self.central_widget.organizational_chart
+            chart.archivo = archivo
             if raiz is None:
-                self.central_widget.organizational_chart.raiz = archivo.raiz
+                chart.raiz = archivo.raiz
             else:
-                self.central_widget.organizational_chart.raiz = raiz
-            self.central_widget.organizational_chart.draw_tree()
-            self.central_widget.organizational_chart.center_chart()
+                chart.raiz = raiz
+            chart.draw_tree()
+            chart.center_chart()
+            self.update_toolbar()
+            print(archivo.organigrama.fecha)
             self.status_label.setText(f"Vigente hasta: {archivo.organigrama.fecha.strftime(r'%d/%m/%Y')}")
             
     def __init__(self):
@@ -585,14 +701,7 @@ class EditorDeOrganigramas(QMainWindow):
         
         self.archivos[self.archivoEnfocado.organigrama.codigo] = self.archivoEnfocado
             
-        # for file in os.listdir(self.ruta_archivos):
-        #     dir = self.ruta_archivos + '\\' + file
-        #     temp : Archivo = self.leer_archivo(dir)
-        #     if temp != None:
-        #         self.archivos[temp.organigrama.codigo] = temp
-                
-        # print(self.archivos)
-        # print(type(self.archivos))
+            
 
         persona = Persona(codigo="1011", dependencia="202", nombre="Juan", apellido = "Perez")
         print(persona)
@@ -602,18 +711,23 @@ class EditorDeOrganigramas(QMainWindow):
 
 
         temp = self.archivoEnfocado
+        print("\n\n\n")
+        print(temp.raiz)
         temp.crearDependencia("Gotocesars", temp.raiz)
+        print(self.archivoEnfocado.raiz)
+        print("Test\n\n\n\n\n\n\n")
         dep = temp.raiz.buscar_nodo("000", NodoArbol.compararCodigo)
         print(dep)
-        temp.ingresarPersona("Fabri", "Kawabata", "5406655", "0972399578", "Angel Torres", 1234)
-        temp.ingresarPersona("Hiroto", "Yamashita", "2348932", "2384123", "Mcal. Estigarribia", 2345)
-        temp.asignarPersonaADependencia("0000", "000", True)
+        temp.ingresarPersona(Persona(nombre="Fabri", apellido="Kawabata", documento="5406655", telefono="0972399578", direccion="Angel Torres", salario=1234))
+        temp.ingresarPersona(Persona(nombre="Hiroto", apellido="Yamashita", documento="2348932", telefono="2384123", direccion="Mcal. Estigarribia", salario=2345))
+        temp.asignarPersonaADependencia("0000", "000")
+        temp.modificarDependencia(codigoDependencia="000", codresNuevo="0000")
         individuo = temp.personasPorCodigo["0000"]
         print(individuo)
         print(temp.raiz.data)
-        temp.raiz.recorrerOrganigrama("0000", NodoArbol.quitarJefe)
+        temp.raiz.recorrer_arbol(NodoArbol.quitarJefe, "0000")
         print(temp.raiz.data)
-        temp.asignarPersonaADependencia("0001", "000", True)
+        temp.modificarDependencia(codigoDependencia="000", codresNuevo="0001")
         print(temp.raiz.data)
 
     
@@ -657,8 +771,7 @@ class EditorDeOrganigramas(QMainWindow):
         archivo.organigrama.organizacion = "OrgPrueba"
         archivo.organigrama.fecha = datetime.now()
         archivo.raiz = raiz
-        archivo.dependenciasPorCodigo = ['001', '002', '003', '004', '005', '006', '007', '008', '009', '010']
-        archivo.codigoDependenciaMasAlto = 10
+        archivo.codigosDeDependencias = ['001', '002', '003', '004', '005', '006', '007', '008', '009', '010']
         
         def compararCodigo(nodo : NodoArbol, codigo):
             return nodo.data.codigo == codigo
@@ -670,15 +783,15 @@ class EditorDeOrganigramas(QMainWindow):
         print(encontrado.padre(raiz))
 
 
-        persona1 = Persona(codigo="1011", dependencia="002", nombre="Juan", apellido = "Perez", salario=50000)
+        persona1 = Persona(codigo="1011", dependencia="001", nombre="Juan", apellido = "Perez", salario=50000)
         persona2 = Persona(codigo="1012", dependencia="002", nombre="Pedro", apellido = "Pascal", salario=565656)
-        persona3 = Persona(codigo="1013", dependencia="002", nombre="Poroto", apellido = "Manteca", salario=636363)
-        persona4 = Persona(codigo="1014", dependencia="002", nombre="El", apellido = "Ivan", salario=5959595)
-        persona5 = Persona(codigo="1015", dependencia="002", nombre="Fabrizio", apellido = "K", salario=200000)
-        persona6 = Persona(codigo="1016", dependencia="004", nombre="Martin", apellido = "F", salario=19191919)
-        persona7 = Persona(codigo="1017", dependencia="004", nombre="Javier", apellido = "G", salario=666666)
+        persona3 = Persona(codigo="1013", dependencia="003", nombre="Poroto", apellido = "Manteca", salario=636363)
+        persona4 = Persona(codigo="1014", dependencia="004", nombre="El", apellido = "Ivan", salario=5959595)
+        persona5 = Persona(codigo="1015", dependencia="005", nombre="Fabrizio", apellido = "K", salario=200000)
+        persona6 = Persona(codigo="1016", dependencia="006", nombre="Martin", apellido = "F", salario=19191919)
+        persona7 = Persona(codigo="1017", dependencia="007", nombre="Javier", apellido = "G", salario=666666)
         persona8 = Persona(codigo="1018", dependencia="008", nombre="Filippi", apellido = "Profe", salario=100000)
-        persona9 = Persona(codigo="1019", dependencia="005", nombre="Ivan", apellido = "Aux", salario=10000)
+        persona9 = Persona(codigo="1019", dependencia="009", nombre="Ivan", apellido = "Aux", salario=10000)
         persona10 = Persona(codigo="1020", dependencia="010", nombre="Jhonny", apellido = "Test", salario=10000)
         archivo.personasPorCodigo[persona1.codigo] = persona1
         archivo.personasPorCodigo[persona2.codigo] = persona2
@@ -690,13 +803,11 @@ class EditorDeOrganigramas(QMainWindow):
         archivo.personasPorCodigo[persona8.codigo] = persona8
         archivo.personasPorCodigo[persona9.codigo] = persona9
         archivo.personasPorCodigo[persona10.codigo] = persona10
-
-        hijo_1.data.codigoResponsable = persona5.codigo
         
         # DEBUG
         print("\n\n\n\n\n\n\n")
         print("Dependencias por codigo")
-        print(archivo.dependenciasPorCodigo)
+        print(archivo.codigosDeDependencias)
         
         print("Archivo guardado:\n")
         with open('archivo.org', 'wb') as outf:
@@ -750,22 +861,141 @@ class EditorDeOrganigramas(QMainWindow):
         self.show()
      
     def create_toolbar(self):
-        # TODO: mostrar lista de personas self.personasPorCodigo
-        self.toolbar = QToolBar("Properties", self)
+        # Create the toolbar
+        self.toolbar = QToolBar("Personas", self)
+        self.toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.toolbar.setOrientation(Qt.Orientation.Vertical)
 
-        label1 = QLabel("Property 1:")
-        label2 = QLabel("Property 2:")
-        text_field1 = QLineEdit()
-        text_field2 = QLineEdit()
+        # Create a scrollable area for the personas widget
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
 
-        self.toolbar.addWidget(label1)
-        self.toolbar.addWidget(text_field1)
-        self.toolbar.addSeparator()
-        self.toolbar.addWidget(label2)
-        self.toolbar.addWidget(text_field2)
+        # Create a widget to hold the personas
+        self.personas_widget = QWidget()
+        self.personas_layout = QVBoxLayout(self.personas_widget)
+        self.personas_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.personas_layout.setSpacing(0)  # Set spacing between persona buttons to 0  
+        self.scroll_area.setWidget(self.personas_widget)
+        
+        # Add a label to display the title and count of personas
+        self.personas_count_label = QLabel(f"Personas ({len(self.archivoEnfocado.personasPorCodigo)})")
+        self.personas_count_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        font = self.personas_count_label.font()
+        font.setPointSize(11)  # Set the desired font size
+        self.personas_count_label.setFont(font)
+        self.personas_count_label.setContentsMargins(0, 0, 4, 4)
+        self.toolbar.addWidget(self.personas_count_label)
+        
+        # Add the scroll area to the toolbar
+        self.toolbar.addWidget(self.scroll_area)
 
+        # Add the toolbar to the right toolbar area
         self.addToolBar(Qt.ToolBarArea.RightToolBarArea, self.toolbar)
+        
+        # Crear el menu contextual para el click derecho a las personas
+        self.context_menu = QMenu(self)
 
+        # Add actions to the context menu
+        eliminarPersona = QAction("Eliminar Persona", self)
+        modificarPersona = QAction("Modificar Persona", self)
+        asignarPersona = QAction("Asignar Persona a Dependencia", self)
+
+        self.context_menu.addAction(eliminarPersona)
+        self.context_menu.addAction(modificarPersona)
+        self.context_menu.addAction(asignarPersona)
+
+        # Connect actions to their respective slots
+        eliminarPersona.triggered.connect(self.contextual_eliminar_persona)
+        modificarPersona.triggered.connect(self.contextual_modificar_persona)
+        asignarPersona.triggered.connect(self.contextual_asignar_persona)
+
+        # Add a button to call ingresar_personas
+        ingresar_button = QAction("＋ Ingresar Persona", self)
+        ingresar_button.triggered.connect(self.ingresar_personas)
+        self.toolbar.addAction(ingresar_button)
+
+        # Update the toolbar with initial personas
+        self.update_toolbar()
+        
+        
+    def update_toolbar(self):
+        # Clear the personas layout
+        for i in reversed(range(self.personas_layout.count())):
+            self.personas_layout.itemAt(i).widget().setParent(None)
+
+        # Add personas to the personas layout
+        for persona in self.archivoEnfocado.personasPorCodigo.values():
+            button = QPushButton(f"{persona.nombre} {persona.apellido}")
+            button.setProperty("persona", persona)  # Store the persona object as a property of the button
+            # Connect the slot function to the button's clicked signal
+            button.clicked.connect(self.clikear_persona_en_lista)
+            # Contectar el menu contextual
+            button.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+            button.customContextMenuRequested.connect(lambda event, p=persona: self.show_context_menu(event, p))
+            
+            # Cambiar la apariencia del botton usando un stylesheet CSS
+            button.setStyleSheet(
+                """
+                QPushButton {
+                    background-color: white;
+                    padding: 2px;
+                    border: none;
+                }
+                QPushButton:hover {
+                    background-color: lightgray;
+                }
+                QPushButton:pressed {
+                    background-color: silver;
+                }
+                """
+            )    
+            button.setFixedWidth(200)
+            self.personas_layout.addWidget(button)
+       
+        # Update the personas count label
+        self.personas_count_label.setText(f"Personas ({len(self.archivoEnfocado.personasPorCodigo)})")
+
+        # Update the toolbar
+        self.toolbar.update()
+        
+    def clikear_persona_en_lista(self):
+        # Mostrar detalles de la persona
+        # Get the button that triggered the slot
+        button = self.sender()
+
+        # Retrieve the stored persona object from the button's property
+        persona: Persona = button.property("persona")
+        if persona:
+            # Show the persona details in a message box
+            message = (
+                f"Nombre: {persona.nombre}\n"
+                f"Apellido: {persona.apellido}\n"
+                f"Documento: {persona.documento}\n"
+                f"Teléfono: {persona.telefono}\n"
+                f"Dirección: {persona.direccion}\n"
+                f"Salario: {persona.salario}\n"
+                f"Dependencia: {self.archivoEnfocado.raiz.buscar_nodo(persona.dependencia, NodoArbol.compararCodigo)}\n"
+            )
+            QMessageBox.information(self, "Detalles de Persona", message)
+   
+    def show_context_menu(self, event: QPoint, persona: Persona):
+        # Store the selected persona
+        self.context_menu_persona = persona
+
+        # Show the context menu at the cursor position
+        self.context_menu.exec(QCursor.pos())
+
+    def contextual_eliminar_persona(self):
+        self.archivoEnfocado.eliminarPersona(self.context_menu_persona.codigo)
+        self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
+
+    def contextual_modificar_persona(self):
+        self.modificar_persona(self.context_menu_persona)
+
+    def contextual_asignar_persona(self):
+        self.asignar_persona_a_dependencia(self.context_menu_persona)
+            
     def create_menu_bar(self):
         menu_bar = self.menuBar()
 
@@ -788,6 +1018,7 @@ class EditorDeOrganigramas(QMainWindow):
                     ("Crear Organigrama", self.crear_organigrama),
                     ("Abrir Organigrama", self.abrir_organigrama),
                     ("Cambiar Nombre Organigrama", self.cambiar_nombre_organigrama),
+                    ("Cambiar Fecha Organigrama", self.cambiar_fecha_organigrama),
                     ("Copiar Organigrama", self.copiar_organigrama),
                     SEPARADOR_HORIZONTAL,
                     ("Graficar Organigrama Completo", self.graficar_organigrama_completo),
@@ -879,7 +1110,7 @@ class EditorDeOrganigramas(QMainWindow):
         self.tab_bar_archivos.setCurrentIndex(tab_index)
         self.tab_indexes[self.archivoEnfocado.organigrama.codigo] = tab_index
         
-        self.status_label = QLabel()
+        self.status_label = QLabel(f"Vigente hasta: {self.archivoEnfocado.organigrama.fecha.strftime(r'%d/%m/%Y')}")
         self.statusBar().addWidget(self.status_label)
         
         self.zoom_widget = ZoomWidget(target_widget=self.central_widget.organizational_chart)
@@ -890,8 +1121,6 @@ class EditorDeOrganigramas(QMainWindow):
         if index != self.tab_indexes[self.archivoEnfocado.organigrama.codigo]:
             codigo_archivo_en_tab = [k for k, v in self.tab_indexes.items() if v == index][0]
             self.archivoEnfocado = self.archivos[codigo_archivo_en_tab]
-            # TODO: Remover print
-            print(f"Enfoco archivo {self.archivos[codigo_archivo_en_tab].organigrama.organizacion} tab {index}")
 
     def cerrarTabArchivo(self, index_a_cerrar):
             # No cerrar si es el unico archivo abierto
@@ -1029,10 +1258,13 @@ class EditorDeOrganigramas(QMainWindow):
             outf.write(optimized_pickle)
 
     def leer_archivo (self, nombre_archivo):
-        with open (nombre_archivo, 'rb') as inf:
-            if os.path.getsize(nombre_archivo) != 0:
-                datos = pickle.load(inf)
-        return datos
+        try:
+            with open (nombre_archivo, 'rb') as inf:
+                if os.path.getsize(nombre_archivo) != 0:
+                    datos = pickle.load(inf)
+            return datos
+        except:
+            return None
 
     # TODO: Arreglar
     def crearCodigoOrganigrama(self):
@@ -1056,7 +1288,10 @@ class EditorDeOrganigramas(QMainWindow):
     
     def abrirOrganigrama(self, rutaArchivo) -> Archivo:        
         # Leer el archivo
-        archivo : Archivo = self.leer_archivo(rutaArchivo)
+        archivo: Archivo = self.leer_archivo(rutaArchivo)
+        if archivo is None:
+            QMessageBox.critical(self, "Error", "Error al leer el archivo!")
+            return
         archivo.ruta = rutaArchivo
         
         # Agregar al los archivos en memoria para poder realizar autoguardado
@@ -1131,7 +1366,7 @@ class EditorDeOrganigramas(QMainWindow):
         self.archivos[orgCopy.organigrama.codigo] = orgCopy
         return orgCopy
 
-    def getText(self, title, message, regex : Tuple[str, str] = None, bounds = None):
+    def getText(self, title, message, default = None, regex : Tuple[str, str] = None):
         dialog = QInputDialog(self)
         dialog.setLabelText(message)
         dialog.setWindowTitle(title)
@@ -1141,17 +1376,13 @@ class EditorDeOrganigramas(QMainWindow):
         dialog.setWindowFlags(dialog.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
 
         line_edit: QLineEdit = dialog.findChild(QLineEdit)
-
+        if default:
+            line_edit.setText(default)
         if regex:
             validator = QRegularExpressionValidator(QRegularExpression(regex[0]), dialog)
             line_edit.setValidator(validator)
             error_text = f"Valor inválido. {regex[1]}"
-        elif bounds:
-            min_val, max_val = bounds
-            validator = QIntValidator(min_val, max_val, dialog)
-            line_edit.setValidator(validator)
-            error_text = f"El valor debe estar entre {min_val} y {max_val}"
-
+            
         # Create error label
         error_label = QLabel(dialog)
         error_label.setStyleSheet("color: red")
@@ -1240,6 +1471,13 @@ class EditorDeOrganigramas(QMainWindow):
             # Actualizar nombre de tab
             self.tab_bar_archivos.setTabText(self.tab_bar_archivos.currentIndex(), nombreNuevo)
     
+    def cambiar_fecha_organigrama(self):
+        dialog = DateInputDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            fecha = dialog.getDate()
+            self.archivoEnfocado.organigrama.fecha = fecha
+            self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
+    
     def copiar_organigrama(self):
         nombre, ok = self.getText(
         "Copiar Organigrama", 
@@ -1258,73 +1496,123 @@ class EditorDeOrganigramas(QMainWindow):
                 self.tab_indexes[nuevoArchivo.organigrama.codigo] = tab_index
 
     def crear_dependencia(self):
-        dialog = SelecionDeDependenciaDialog(self.archivoEnfocado.raiz)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            nodo_seleccionado = dialog.selected_node()
-            # TODO implementar pedir persona
+        nombreDependencia, ok = self.getText(
+        "Crear Dependencia", 
+        f"Ingrese el nombre para la dependencia:", 
+        regex=DependenciaRegex.patrones['nombre'])
+        if ok:
+            nodo_seleccionado = None
+            if self.archivoEnfocado.raiz is not None:
+                dialog = SelecionDeDependenciaDialog(self.archivoEnfocado.raiz, titulo="Seleccionar la dependencia padre:", parent=self)
+                if dialog.exec() == QDialog.DialogCode.Accepted:
+                    nodo_seleccionado = dialog.selected_node()
+            self.archivoEnfocado.crearDependencia(nombreDependencia, nodo_seleccionado)
+            self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
         
     def eliminar_dependencia(self):
-        dialog = SelecionDeDependenciaDialog(self.archivoEnfocado.raiz)
+        if self.archivoEnfocado.raiz is None:  # Check if there are no options
+            QMessageBox.critical(self, "Error", "No hay dependencias en el organigrama. Ingrese una con CrearDependencia")
+            return  # Return without performing any further actions
+        dialog = SelecionDeDependenciaDialog(self.archivoEnfocado.raiz, titulo="Seleccionar dependencia a eliminar:", parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             nodo_seleccionado = dialog.selected_node()
-            # TODO: puede ser pasar nomas el nodo a eliminarDependencia
-            self.archivoEnfocado.eliminarDependencia(nodo_seleccionado.data.codigo)
-            # TODO: llamar en todo metodo que modifica archivoEnfocado
+            self.archivoEnfocado.eliminarDependencia(nodo_seleccionado)
             self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
 
     def modificar_dependencia(self):
-        dialog = SelecionDeDependenciaDialog(self.archivoEnfocado.raiz)
+        if self.archivoEnfocado.raiz is None:  # Check if there are no options
+            QMessageBox.critical(self, "Error", "No hay dependencias en el organigrama. Ingrese una con CrearDependencia")
+            return  # Return without performing any further actions
+        dialog = SelecionDeDependenciaDialog(self.archivoEnfocado.raiz, titulo="Seleccionar dependencia a modificar:", parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             nodo_seleccionado = dialog.selected_node()
             nombreNuevo, ok = self.getText(
             "Modificar Nombre Dependencia", 
             f"Ingrese el nuevo nombre para la dependencia '{nodo_seleccionado.data.nombre}':", 
+            default=f'{nodo_seleccionado.data.nombre}',
             regex=DependenciaRegex.patrones['nombre'])
-            if ok and nombreNuevo:
-                # TODO: puede ser pasar nomas el nodo a modificar dependencia
-                # TODO !! IMPORTANT, permitir modificar codigo responsable
-                self.archivoEnfocado.modificarDependencia(nodo_seleccionado.data.codigo, nombreNuevo)
-                # TODO: llamar en todo metodo que modifica archivoEnfocado
-                self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
+            if ok:
+                dialog = PersonaSelectionDialog(self.archivoEnfocado.personasPorCodigo.values(), 
+                                                titulo="Ingrese el nuevo jefe para la dependencia:", parent=self)
+                if dialog.exec() == QDialog.DialogCode.Accepted:
+                    persona_seleccionada = dialog.get_persona_seleccionada()
+                    self.archivoEnfocado.modificarDependencia(nodo_seleccionado.data.codigo, nombreNuevo, persona_seleccionada.codigo)
+                    self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
 
     def editar_ubicacion_dependencias(self):
-        # TODO: puede ser poner ambos seleccionadores de nodos en una ventana de dialogo?
-        # TODO: DependencySelectionDialog deberia decir para que se esta pidiendo el nodo
-        dialog = SelecionDeDependenciaDialog(self.archivoEnfocado.raiz)
+        if self.archivoEnfocado.raiz is None:  # Check if there are no options
+            QMessageBox.critical(self, "Error", "No hay dependencias en el organigrama. Ingrese una con CrearDependencia")
+            return  # Return without performing any further actions
+        dialog = SelecionDeDependenciaDialog(self.archivoEnfocado.raiz, titulo= "Seleccionar dependencia a mover:", parent=self)
+
         if dialog.exec() == QDialog.DialogCode.Accepted:
             nodo_a_mover = dialog.selected_node()
-            
-            
             dialog = SelecionDeDependenciaDialog(self.archivoEnfocado.raiz, 
                                                  # Excluimos el nodo a mover y sus hijos ya que no tiene sentido logico
-                                                 nodos_a_excluir=[nodo_a_mover])
+                                                 nodos_a_excluir=[nodo_a_mover],
+                                                 titulo="Seleccionar donde ubicar:", 
+                                                 parent=self)
+            if dialog.list_widget.count() == 0:  # Check if there are no options
+                QMessageBox.critical(self, "Error", "No available options.")
+                return  # Return without performing any further actions
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 nuevo_nodo_padre = dialog.selected_node()   
-                # TODO: si no hay opciones en el menu retornar QDialog.DialogCode.Rejected
                 if nuevo_nodo_padre is not None:
                     self.archivoEnfocado.editarUbicacionDependencia(nodo_a_mover, nuevo_nodo_padre)
-                    # TODO: llamar en todo metodo que modifica archivoEnfocado
                     self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
 
     def ingresar_personas(self):
-        pass
+        dialog = DatosPersonaDialog(titulo="Crear Persona", parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            persona = dialog.get_persona()
+            self.archivoEnfocado.ingresarPersona(persona)
+            self.update_toolbar()
 
     def eliminar_personas(self):
-        pass
+        dialog = PersonaSelectionDialog(self.archivoEnfocado.personasPorCodigo.values(), 
+                                        titulo="Persona a Eliminar:", parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            persona_seleccionada = dialog.get_persona_seleccionada()
+            if persona_seleccionada:
+                codigo_persona = persona_seleccionada.codigo
+                self.archivoEnfocado.eliminarPersona(codigo_persona)
+                self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
 
     def modificar_personas(self):
-        pass
+        dialog = PersonaSelectionDialog(self.archivoEnfocado.personasPorCodigo.values(), 
+                                titulo="Persona a Modificar:", parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            persona_seleccionada = dialog.get_persona_seleccionada()
+            self.modificar_persona(persona_seleccionada)
+            
+    def modificar_persona(self, persona: Persona):
+        dialog = DatosPersonaDialog(persona, titulo="Modificar Persona", parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            datos_persona = dialog.get_persona()
+            self.archivoEnfocado.modificarPersona(persona.codigo, datos_persona)
+            self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
 
     def asignar_personas_dependencias(self):
-        pass        
+        dialog = PersonaSelectionDialog(self.archivoEnfocado.personasPorCodigo.values(), 
+                                titulo="Persona a Asignar:", parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            persona_seleccionada = dialog.get_persona_seleccionada()
+            self.asignar_persona_a_dependencia(persona_seleccionada)
+
+    def asignar_persona_a_dependencia(self, persona: Persona):
+        dialog = SelecionDeDependenciaDialog(self.archivoEnfocado.raiz, titulo= "Dependencia donde asignar:", parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            nodo_a_mover = dialog.selected_node()
+            self.archivoEnfocado.asignarPersonaADependencia(persona.codigo, nodo_a_mover.data.codigo)
+            self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
 
     def pedir_nodo_para_imprimir_informe(self, funcion):
-        dialog = SelecionDeDependenciaDialog(self.archivoEnfocado.raiz)
+        dialog = SelecionDeDependenciaDialog(self.archivoEnfocado.raiz, titulo="Seleccion Dependencia para Informe:", parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             nodo_seleccionado = dialog.selected_node()
             rutaPDF = funcion(nodo_seleccionado)
             if rutaPDF:
-                pdf_popup = PDFPopupWindow(rutaPDF)
+                pdf_popup = PDFPopupWindow(rutaPDF, parent=self)
                 pdf_popup.exec()
 
     def personal_por_dependencia(self):
@@ -1344,21 +1632,20 @@ class EditorDeOrganigramas(QMainWindow):
         self.pedir_nodo_para_imprimir_informe(funcion_informe)
         
     def imprimir_organigrama(self):
-        pass
-
+        ruta = os.path.join(self.ruta_archivos, "Grafico_Organigrama")
+        funcion_informe = lambda nodo: self.central_widget.organizational_chart.draw_tree_to_pdf(nodo, ruta)
+        self.pedir_nodo_para_imprimir_informe(funcion_informe)
+              
     def graficar_organigrama_completo(self):
         self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
         
     def graficar_organigrama_por_dependencia(self):
-        # Decir que pide SelecionDeDependenciaDialog
-        dialog = SelecionDeDependenciaDialog(self.archivoEnfocado.raiz)
+        dialog = SelecionDeDependenciaDialog(self.archivoEnfocado.raiz, 
+                                             titulo="Dependencia a Graficar:", parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             nodo_a_graficar = dialog.selected_node()
             self.central_widget.organizational_chart.raiz = nodo_a_graficar
-            # TODO: llamar en todo metodo que modifica archivoEnfocado
             self.refrescarVisualizacionOrganigrama(self.archivoEnfocado, nodo_a_graficar)
-        
-      
 
 if __name__ == '__main__':
     app = QApplication([])

@@ -193,8 +193,7 @@ class Informador:
             ruta = os.path.join(self.ruta_de_archivos, "Salario_Por_Dependencia_Extendido.pdf")
             pdf.output(ruta)
             return ruta
-        
+         
     # TODO: Implementar
-    def imprimirOrganigrama(self, archivo: Archivo) -> str:
-        #imprimir el grafico del organigrama completo
+    def imprimirOrganigrama(self, archivo: Archivo, nodo: NodoArbol) -> str:
         pass

@@ -21,6 +21,7 @@ class NodoArbol:
         self.children.remove(nodo_hijo)
 
     def buscar_nodo(self, buscado, buscador: Callable[['NodoArbol', Any], bool]) -> 'NodoArbol':
+        """Buscar recursivamente un nodo que cumpla que la funcion de buscador retorne verdadero"""
         if buscador(self, buscado):
             return self
         for nodo in self.children:
@@ -29,13 +30,12 @@ class NodoArbol:
                 return resultado
         return None 
     
-    # TODO: cambiar/hacer generico? 
-    def recorrerOrganigrama(self, codigo, funcion_callback):
-        resultado = funcion_callback(self, codigo)
+    def recorrer_arbol(self, function: Callable[['NodoArbol', Any], None], *args: Any, **kwargs: Any) -> None:
+        """Recorrer el arbol llamando una funcion que retorna nada que opera sobre cada nodo recursivamente
+        La funcion puede contener cualquier cantidad de argumentos adicionales"""
+        function(self, *args, **kwargs)
         for nodo in self.children:
-            if resultado == None:
-                return None
-            resultado = nodo.recorrerOrganigrama(codigo, funcion_callback)
+            nodo.recorrer_arbol(function, *args, **kwargs)
 
     def nodo_es_hijo(self, nodo) -> bool:
         return nodo in self.children
@@ -43,15 +43,17 @@ class NodoArbol:
     def padre(self, raiz: 'NodoArbol') -> 'NodoArbol':
         return raiz.buscar_nodo(self, NodoArbol.nodo_es_hijo)
     
+    def compararCodigo(self, codigoDep):
+        return self.data.codigo == codigoDep
+    
+    def compararCodigoResponsable(self, codigoPersona):
+        return self.data.codigoResponsable == codigoPersona
+    
     def quitarJefe(self, codigoPersona) -> 'None':
         """Esta funcion nos sirve para cuando tenemos que quitarle a una
             persona del cargo de jefe de alguna dependencia"""
         if self.data.codigoResponsable == codigoPersona:
             self.data.codigoResponsable = None
-            return None
-    
-    def compararCodigo(self, codigoDep):
-        return self.data.codigo == codigoDep
 
     # Representacion para debug
     def __repr__(self) -> str:
