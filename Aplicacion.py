@@ -877,16 +877,18 @@ class EditorDeOrganigramas(QMainWindow):
         
         if persona is not None:
             # Mostramos los detalles de la persona en un Messagebox
-            message = (
+            mensaje = (
                 f"Nombre: {persona.nombre}\n"
                 f"Apellido: {persona.apellido}\n"
                 f"Documento: {persona.documento}\n"
                 f"Teléfono: {persona.telefono}\n"
                 f"Dirección: {persona.direccion}\n"
                 f"Salario: {persona.salario}\n"
-                f"Dependencia: {self.archivoEnfocado.raiz.buscarNodo(persona.dependencia, NodoArbol.compararCodigo)}\n"
             )
-            QMessageBox.information(self, "Detalles de Persona", message)
+            if self.archivoEnfocado.raiz is not None:
+                mensaje +=  f"Dependencia: {self.archivoEnfocado.raiz.buscarNodo(persona.dependencia, NodoArbol.compararCodigo)}\n"
+            QMessageBox.information(self, "Detalles de Persona", mensaje)
+            
    
     def mostrarMenuContextual(self, event: QPoint, persona: Persona):
         """Funcion para mostrar el menu contextual costumizado al hacer click derecho sobre una persona y permitir realizar funciones"""
@@ -931,7 +933,7 @@ class EditorDeOrganigramas(QMainWindow):
                     ("Guardar Organigrama", self.menuGuardarOrganigrama),
                     ("Guardar Organigrama Como", self.menuGuardarOrganigramaComo),
                     SEPARADOR_HORIZONTAL,
-                    ("Exit", self.close)
+                    ("Salir", self.close)
                 ]
             },
             {
@@ -1371,10 +1373,14 @@ class EditorDeOrganigramas(QMainWindow):
             self.guardarOrganigramaComo(self.archivoEnfocado, ruta_archivo)
 
     def menuCopiarOrganigrama(self):
-        nombre, ok = self.obtenerTexto(
-        "Copiar Organigrama", 
-        "Ingrese el nombre de la organización copiada:", 
-        regex=OrganigramaRegex.patrones['organizacion'])
+        if self.archivoEnfocado.raiz is not None:
+            nombre, ok = self.obtenerTexto(
+            "Copiar Organigrama", 
+            "Ingrese el nombre de la organización copiada:", 
+            regex=OrganigramaRegex.patrones['organizacion'])
+        else:
+            QMessageBox.critical(self, "Error", "No hay dependencias en el organigrama para copiar. Ingrese una en \"Crear Dependencia\".")
+            return
         if ok and nombre:
             dialog = EntradaFechaDialog(self)
             if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -1405,15 +1411,23 @@ class EditorDeOrganigramas(QMainWindow):
             self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
     
     def menuCambiarColoresOrganigrama(self):
-        dialog = EntradaColoresOrganigramaDialog(self)
-        dialog.exec()
+        if self.archivoEnfocado.raiz is not None:
+            dialog = EntradaColoresOrganigramaDialog(self)
+            dialog.exec()
+        else:
+            QMessageBox.critical(self, "Error", "No hay dependencias en el organigrama para cambiar color. Ingrese una en \"Crear Dependencia\".")
+            return
 
     def menuGraficarOrganigramaCompleto(self):
         self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
         
     def menuGraficarOrganigramaPorDependencia(self):
-        dialog = SelecionDeDependenciaDialog(self.archivoEnfocado.raiz, 
-                                             titulo="Dependencia a Graficar:", parent=self)
+        if self.archivoEnfocado.raiz is not None:
+            dialog = SelecionDeDependenciaDialog(self.archivoEnfocado.raiz, 
+                                                titulo="Dependencia a Graficar:", parent=self)
+        else:
+            QMessageBox.critical(self, "Error", "No hay dependencias en el organigrama para graficar. Ingrese una en \"Crear Dependencia\".")
+            return
         if dialog.exec() == QDialog.DialogCode.Accepted:
             nodoAGraficar = dialog.nodoSeleccionado()
             self.widgetCentral.graficoOrganigrama.raiz = nodoAGraficar
@@ -1443,7 +1457,7 @@ class EditorDeOrganigramas(QMainWindow):
         
     def menuEliminarDependencia(self):
         if self.archivoEnfocado.raiz is None:  # Check if there are no options
-            QMessageBox.critical(self, "Error", "No hay dependencias en el organigrama. Ingrese una con CrearDependencia")
+            QMessageBox.critical(self, "Error", "No hay dependencias en el organigrama para eliminar. Ingrese una en \"Crear Dependencia\".")
             return  # Return without performing any further actions
         dialog = SelecionDeDependenciaDialog(self.archivoEnfocado.raiz, titulo="Seleccionar dependencia a eliminar:", parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -1453,7 +1467,7 @@ class EditorDeOrganigramas(QMainWindow):
 
     def menuModificarDependencia(self):
         if self.archivoEnfocado.raiz is None:  # Verificar si es que no hay opciones
-            QMessageBox.critical(self, "Error", "No hay dependencias en el organigrama. Ingrese una con CrearDependencia")
+            QMessageBox.critical(self, "Error", "No hay dependencias en el organigrama para modificar. Ingrese una en \"Crear Dependencia\".")
             return  # Retornar sin realizar ninguna accion
         dialog = SelecionDeDependenciaDialog(self.archivoEnfocado.raiz, titulo="Seleccionar dependencia a modificar:", parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -1477,7 +1491,7 @@ class EditorDeOrganigramas(QMainWindow):
 
     def menuEditarUbicacionDependecias(self):
         if self.archivoEnfocado.raiz is None:  # Verificar si es que no hay opciones
-            QMessageBox.critical(self, "Error", "No hay dependencias en el organigrama. Ingrese una con CrearDependencia")
+            QMessageBox.critical(self, "Error", "No hay dependencias en el organigrama para editar ubicacion. Ingrese una en \"Crear Dependencia\".")
             return  # Retornar sin realizar ninguna accion
         dialog = SelecionDeDependenciaDialog(self.archivoEnfocado.raiz, titulo= "Seleccionar dependencia a mover:", parent=self)
 
@@ -1488,8 +1502,9 @@ class EditorDeOrganigramas(QMainWindow):
                                                  nodosAExcluir=[nodoReubicado],
                                                  titulo="Seleccionar donde ubicar:", 
                                                  parent=self)
+            
             if dialog.widgetLista.count() == 0:  # Verificar si es que no hay opciones
-                QMessageBox.critical(self, "Error", "No available options.")
+                QMessageBox.critical(self, "Error", "Sin opciones disponibles.")
                 return  # Retornar sin realizar ninguna accion
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 nuevoNodoPadre = dialog.nodoSeleccionado()   
@@ -1518,7 +1533,7 @@ class EditorDeOrganigramas(QMainWindow):
                 dialog = PersonaSelectionDialog(self.archivoEnfocado.personasPorCodigo.values(), 
                                             titulo="Persona a Eliminar:", parent=self)
         else:
-            QMessageBox.critical(self, "Error", "No existen personar para eliminar")
+            QMessageBox.critical(self, "Error", "No existen personas para eliminar. Ingrese una en \"Ingresar Persona\".")
             return
         if dialog.exec() == QDialog.DialogCode.Accepted:
             personaSeleccionada = dialog.obtenerPersonaSeleccionada()
@@ -1531,8 +1546,12 @@ class EditorDeOrganigramas(QMainWindow):
                 
 
     def menuModificarPersona(self):
-        dialog = PersonaSelectionDialog(self.archivoEnfocado.personasPorCodigo.values(), 
-                                titulo="Persona a Modificar:", parent=self)
+        if any(self.archivoEnfocado.personasPorCodigo):
+            dialog = PersonaSelectionDialog(self.archivoEnfocado.personasPorCodigo.values(), 
+                                    titulo="Persona a Modificar:", parent=self)
+        else:
+            QMessageBox.critical(self, "Error", "No hay personas para modificar. Ingrese una en \"Ingresar Persona\".")
+            return
         if dialog.exec() == QDialog.DialogCode.Accepted:
             personaSeleccionada = dialog.obtenerPersonaSeleccionada()
             self.modificarPersona(personaSeleccionada)
@@ -1545,8 +1564,12 @@ class EditorDeOrganigramas(QMainWindow):
             self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
 
     def menuAsignarPersonaADependencia(self):
-        dialog = PersonaSelectionDialog(self.archivoEnfocado.personasPorCodigo.values(), 
-                                titulo="Persona a Asignar:", parent=self)
+        if any(self.archivoEnfocado.personasPorCodigo):
+            dialog = PersonaSelectionDialog(self.archivoEnfocado.personasPorCodigo.values(), 
+                                    titulo="Persona a Asignar:", parent=self)
+        else:
+            QMessageBox.critical(self, "Error", "No hay personas para asignar. Ingrese una en \"Ingresar Persona\".")
+            return
         if dialog.exec() == QDialog.DialogCode.Accepted:
             personaSeleccionada = dialog.obtenerPersonaSeleccionada()
             self.asignarPersonaADependencia(personaSeleccionada)
@@ -1568,26 +1591,41 @@ class EditorDeOrganigramas(QMainWindow):
                 pdf_popup.exec()
 
     def menuPersonalPorDependencia(self):
-        funcionInforme = lambda nodo: self.informador.personalPorDependencia(self.archivoEnfocado, nodo.dep)
-        self.pedirNodoParaImprimirInforme(funcionInforme)
+        if self.archivoEnfocado.raiz is not None:
+            funcionInforme = lambda nodo: self.informador.personalPorDependencia(self.archivoEnfocado, nodo.dep)
+            self.pedirNodoParaImprimirInforme(funcionInforme)
+        else:
+            QMessageBox.critical(self, "Error", "No hay dependencia para imprimir. Ingrese una en \"Crear Dependencia\".")
 
     def menuPersonalPorDependenciaExtendido(self):
-        funcionInforme = lambda nodo: self.informador.personalPorDependenciaExtendido(self.archivoEnfocado, nodo)
-        self.pedirNodoParaImprimirInforme(funcionInforme)
+        if self.archivoEnfocado.raiz is not None:
+            funcionInforme = lambda nodo: self.informador.personalPorDependenciaExtendido(self.archivoEnfocado, nodo)
+            self.pedirNodoParaImprimirInforme(funcionInforme)
+        else:
+            QMessageBox.critical(self, "Error", "No hay dependencia para imprimir. Ingrese una en \"Crear Dependencia\".")
 
     def menuSalarioPorDependencia(self):
-        funcionInforme = lambda nodo: self.informador.salarioPorDependencia(self.archivoEnfocado, nodo.dep)
-        self.pedirNodoParaImprimirInforme(funcionInforme)
+        if self.archivoEnfocado.raiz is not None:
+            funcionInforme = lambda nodo: self.informador.salarioPorDependencia(self.archivoEnfocado, nodo.dep)
+            self.pedirNodoParaImprimirInforme(funcionInforme)
+        else:
+            QMessageBox.critical(self, "Error", "No hay dependencia para imprimir salario. Ingrese una en \"Crear Dependencia\".")
 
     def menuSalarioPorDependenciaExtendido(self):
-        funcionInforme = lambda nodo: self.informador.salarioPorDependenciaExtendido(self.archivoEnfocado, nodo)
-        self.pedirNodoParaImprimirInforme(funcionInforme)
-        
-    def menuImprimirOrganigrama(self):
-        ruta = os.path.join(self.rutaArchivos, "Grafico_Organigrama")
-        funcionInforme = lambda nodo: self.widgetCentral.graficoOrganigrama.dibujarArbolOrganigramaAPdf(nodo, ruta)
-        self.pedirNodoParaImprimirInforme(funcionInforme)
+        if self.archivoEnfocado.raiz is not None:
+            funcionInforme = lambda nodo: self.informador.salarioPorDependenciaExtendido(self.archivoEnfocado, nodo)
+            self.pedirNodoParaImprimirInforme(funcionInforme)
+        else:
+            QMessageBox.critical(self, "Error", "No hay dependencia para imprimir salario. Ingrese una en \"Crear Dependencia\".")
     
+    def menuImprimirOrganigrama(self):
+        if self.archivoEnfocado.raiz is not None:
+            ruta = os.path.join(self.rutaArchivos, "Grafico_Organigrama")
+            funcionInforme = lambda nodo: self.widgetCentral.graficoOrganigrama.dibujarArbolOrganigramaAPdf(nodo, ruta)
+            self.pedirNodoParaImprimirInforme(funcionInforme)
+        else:
+            QMessageBox.critical(self, "Error", "No hay dependencia para imprimir el organigrama. Ingrese una en \"Crear Dependencia\".")
+        
     #endregion       
         
 # Ejecucion principal del programa
