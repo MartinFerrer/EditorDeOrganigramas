@@ -762,7 +762,7 @@ class EditorDeOrganigramas(QMainWindow):
         
         self.setGeometry(300, 300, 800, 600)                # Asignar el tamaño de la aplicacion
         self.setWindowTitle("Dreamchart")                   # Asignar titulo de la aplicacion
-        self.setWindowIcon(QIcon(".\Interfaz\Icono.ico"))   # Asignar icono de la aplicacion
+        self.setWindowIcon(QIcon(".\Recursos\Icono.ico"))   # Asignar icono de la aplicacion
      
     def crearBarraDeHerramientas(self):
         """Crear la barra de herramientas que contiene a las personas"""

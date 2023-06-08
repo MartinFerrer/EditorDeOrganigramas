@@ -21,9 +21,9 @@ class Informador:
         """
         # Crear PDF
         pdf = FPDF('P', 'mm', 'A4')
-        pdf.add_font('Calibri', '', r'.\fuentes\calibri.ttf')
-        pdf.add_font('CalibriBold', '', r'.\fuentes\calibrib.ttf')
-        pdf.add_font('CalibriItalic', '', r'.\fuentes\calibrii.ttf')
+        pdf.add_font('Calibri', '', r'.\Recursos\calibri.ttf')
+        pdf.add_font('CalibriBold', '', r'.\Recursos\calibrib.ttf')
+        pdf.add_font('CalibriItalic', '', r'.\Recursos\calibrii.ttf')
         pdf.add_page()
 
         # Imprimir nombre de dependencia
@@ -72,9 +72,9 @@ class Informador:
         # Crear el pdf en la primera llamada
         if pdf is None:
             pdf = FPDF('P', 'mm', 'A4')
-            pdf.add_font('Calibri', '', r'.\fuentes\calibri.ttf')
-            pdf.add_font('CalibriBold', '', r'.\fuentes\calibrib.ttf')
-            pdf.add_font('CalibriItalic', '', r'.\fuentes\calibrii.ttf')
+            pdf.add_font('Calibri', '', r'.\Recursos\calibri.ttf')
+            pdf.add_font('CalibriBold', '', r'.\Recursos\calibrib.ttf')
+            pdf.add_font('CalibriItalic', '', r'.\Recursos\calibrii.ttf')
         
         # Imprimir Datos de cada Dependencia:
         pdf.add_page()
@@ -134,9 +134,9 @@ class Informador:
         """
         # Crear PDF
         pdf = FPDF('P', 'mm', 'A4')
-        pdf.add_font('Calibri', '', r'.\fuentes\calibri.ttf')
-        pdf.add_font('CalibriBold', '', r'.\fuentes\calibrib.ttf')
-        pdf.add_font('CalibriItalic', '', r'.\fuentes\calibrii.ttf')
+        pdf.add_font('Calibri', '', r'.\Recursos\calibri.ttf')
+        pdf.add_font('CalibriBold', '', r'.\Recursos\calibrib.ttf')
+        pdf.add_font('CalibriItalic', '', r'.\Recursos\calibrii.ttf')
         pdf.add_page()
 
         # Imprimir nombre de dependencia
@@ -168,9 +168,9 @@ class Informador:
         # Crear el pdf en la primera llamada
         if pdf is None:
             pdf = FPDF('P', 'mm', 'A4')
-            pdf.add_font('Calibri', '', r'.\fuentes\calibri.ttf')
-            pdf.add_font('CalibriBold', '', r'.\fuentes\calibrib.ttf')
-            pdf.add_font('CalibriItalic', '', r'.\fuentes\calibrii.ttf')
+            pdf.add_font('Calibri', '', r'.\Recursos\calibri.ttf')
+            pdf.add_font('CalibriBold', '', r'.\Recursos\calibrib.ttf')
+            pdf.add_font('CalibriItalic', '', r'.\Recursos\calibrii.ttf')
         
         # Imprimir Datos de cada Dependencia:
         pdf.add_page()

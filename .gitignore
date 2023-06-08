@@ -41,3 +41,7 @@ coverage.xml
 
 # Generated files
 .Archivos/
+
+# Incluir archivo de prueba
+!archivoPrueba.org
+
