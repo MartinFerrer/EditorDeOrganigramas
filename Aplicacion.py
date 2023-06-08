@@ -1444,9 +1444,9 @@ class EditorDeOrganigramas(QMainWindow):
             self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
 
     def menuModificarDependencia(self):
-        if self.archivoEnfocado.raiz is None:  # Check if there are no options
+        if self.archivoEnfocado.raiz is None:  # Verificar si es que no hay opciones
             QMessageBox.critical(self, "Error", "No hay dependencias en el organigrama. Ingrese una con CrearDependencia")
-            return  # Return without performing any further actions
+            return  # Retornar sin realizar ninguna accion
         dialog = SelecionDeDependenciaDialog(self.archivoEnfocado.raiz, titulo="Seleccionar dependencia a modificar:", parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             nodoSeleccionado = dialog.nodoSeleccionado()
@@ -1455,7 +1455,8 @@ class EditorDeOrganigramas(QMainWindow):
             f"Ingrese el nuevo nombre para la dependencia '{nodoSeleccionado.dep.nombre}':", 
             default=f'{nodoSeleccionado.dep.nombre}',
             regex=DependenciaRegex.patrones['nombre'])
-            if ok:
+            if ok and len(self.archivoEnfocado.personasPorCodigo) > 0:  #Verificar que existan personas en el organigrama
+                                                                        #para ser seleccionada como jefe
                 dialog = PersonaSelectionDialog(self.archivoEnfocado.personasPorCodigo.values(), 
                                                 titulo="Ingrese el nuevo jefe para la dependencia:", parent=self)
                 if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -1463,10 +1464,14 @@ class EditorDeOrganigramas(QMainWindow):
                     self.archivoEnfocado.modificarDependencia(nodoSeleccionado.dep.codigo, nombreNuevo, personaSeleccionada.codigo)
                     self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
 
+            else:
+                 self.archivoEnfocado.modificarDependencia(nodoSeleccionado.dep.codigo, nombreNuevo)
+                 self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
+
     def menuEditarUbicacionDependecias(self):
-        if self.archivoEnfocado.raiz is None:  # Check if there are no options
+        if self.archivoEnfocado.raiz is None:  # Verificar si es que no hay opciones
             QMessageBox.critical(self, "Error", "No hay dependencias en el organigrama. Ingrese una con CrearDependencia")
-            return  # Return without performing any further actions
+            return  # Retornar sin realizar ninguna accion
         dialog = SelecionDeDependenciaDialog(self.archivoEnfocado.raiz, titulo= "Seleccionar dependencia a mover:", parent=self)
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -1476,9 +1481,9 @@ class EditorDeOrganigramas(QMainWindow):
                                                  nodosAExcluir=[nodoReubicado],
                                                  titulo="Seleccionar donde ubicar:", 
                                                  parent=self)
-            if dialog.widgetLista.count() == 0:  # Check if there are no options
+            if dialog.widgetLista.count() == 0:  # Verificar si es que no hay opciones
                 QMessageBox.critical(self, "Error", "No available options.")
-                return  # Return without performing any further actions
+                return  # Retornar sin realizar ninguna accion
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 nuevoNodoPadre = dialog.nodoSeleccionado()   
                 # Verificar que no se agreguen mas nodos de lo especificado como maximo
@@ -1501,7 +1506,7 @@ class EditorDeOrganigramas(QMainWindow):
                                         titulo="Persona a Eliminar:", parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             personaSeleccionada = dialog.obtenerPersonaSeleccionada()
-            if personaSeleccionada:
+            if personaSeleccionada is not None:
                 self.archivoEnfocado.eliminarPersona(personaSeleccionada)
                 self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
 
