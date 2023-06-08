@@ -818,7 +818,7 @@ class EditorDeOrganigramas(QMainWindow):
 
         # Añadir un botón para llamar a ingresarPersonas
         ingresarBoton = QAction("＋ Ingresar Persona", self)
-        ingresarBoton.triggered.connect(self.menuIngresarPersonas)
+        ingresarBoton.triggered.connect(self.menuIngresarPersona)
         self.toolbar.addAction(ingresarBoton)
         
         # Actualizar la barra de herramientas con las personas iniciales
@@ -898,7 +898,11 @@ class EditorDeOrganigramas(QMainWindow):
 
     def contextualEliminarPersona(self):
         """Eliminar la persona seleccionada en el menu contextual"""
-        self.archivoEnfocado.eliminarPersona(self.menuContextualPersona)
+        if self.archivoEnfocado.raiz is not None:
+            self.archivoEnfocado.eliminarPersona(self.menuContextualPersona)
+
+        else: #Caso donde se quiere eliminar persona y no existe nodos para recorrer
+            self.archivoEnfocado.personasPorCodigo.pop(self.menuContextualPersona.codigo)
         self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
 
     def contextualModificarPersona(self):
@@ -955,10 +959,10 @@ class EditorDeOrganigramas(QMainWindow):
             {
                 "nombre": "Personas",
                 "acciones": [
-                    ("Ingresar Personas", self.menuIngresarPersonas),
-                    ("Eliminar Personas", self.menuEliminarPersonas),
-                    ("Modificar Personas", self.menuModificarPersonas),
-                    ("Asignar Personas a Dependencias", self.menuAsignarPersoonasADependencias)
+                    ("Ingresar Persona", self.menuIngresarPersona),
+                    ("Eliminar Persona", self.menuEliminarPersona),
+                    ("Modificar Persona", self.menuModificarPersona),
+                    ("Asignar Persona a Dependencia", self.menuAsignarPersonaADependencia)
                 ]
             },
             {
@@ -1416,10 +1420,14 @@ class EditorDeOrganigramas(QMainWindow):
             self.refrescarVisualizacionOrganigrama(self.archivoEnfocado, nodoAGraficar)
 
     def menuCrearDependencia(self):
-        nombreDependencia, ok = self.obtenerTexto(
-        "Crear Dependencia", 
-        f"Ingrese el nombre para la dependencia:", 
-        regex=DependenciaRegex.patrones['nombre'])
+        if len(self.archivoEnfocado.codigosDeDependencias) <= 1000:
+            nombreDependencia, ok = self.obtenerTexto(
+            "Crear Dependencia", 
+            f"Ingrese el nombre para la dependencia:", 
+            regex=DependenciaRegex.patrones['nombre'])
+        else:
+            QMessageBox.critical(self, "Error", "Se llego al limite de dependencias! Ya no hay codigos disponibles")
+            return
         if ok:
             nodoSeleccionado = None
             if self.archivoEnfocado.raiz is not None:
@@ -1444,9 +1452,9 @@ class EditorDeOrganigramas(QMainWindow):
             self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
 
     def menuModificarDependencia(self):
-        if self.archivoEnfocado.raiz is None:  # Check if there are no options
+        if self.archivoEnfocado.raiz is None:  # Verificar si es que no hay opciones
             QMessageBox.critical(self, "Error", "No hay dependencias en el organigrama. Ingrese una con CrearDependencia")
-            return  # Return without performing any further actions
+            return  # Retornar sin realizar ninguna accion
         dialog = SelecionDeDependenciaDialog(self.archivoEnfocado.raiz, titulo="Seleccionar dependencia a modificar:", parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             nodoSeleccionado = dialog.nodoSeleccionado()
@@ -1455,18 +1463,22 @@ class EditorDeOrganigramas(QMainWindow):
             f"Ingrese el nuevo nombre para la dependencia '{nodoSeleccionado.dep.nombre}':", 
             default=f'{nodoSeleccionado.dep.nombre}',
             regex=DependenciaRegex.patrones['nombre'])
-            if ok:
-                dialog = PersonaSelectionDialog(self.archivoEnfocado.personasPorCodigo.values(), 
-                                                titulo="Ingrese el nuevo jefe para la dependencia:", parent=self)
-                if dialog.exec() == QDialog.DialogCode.Accepted:
-                    personaSeleccionada = dialog.obtenerPersonaSeleccionada()
-                    self.archivoEnfocado.modificarDependencia(nodoSeleccionado.dep.codigo, nombreNuevo, personaSeleccionada.codigo)
-                    self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
+            if ok:                  
+                nuevoJefeCodigo = None
+                #Verificar que existan personas en el organigrama para ser seleccionada como jefe
+                if any(self.archivoEnfocado.personasPorCodigo):
+                    dialog = PersonaSelectionDialog(self.archivoEnfocado.personasPorCodigo.values(), 
+                                                    titulo="Ingrese el nuevo jefe para la dependencia:", parent=self)
+                    if dialog.exec() == QDialog.DialogCode.Accepted:
+                        personaSeleccionada = dialog.obtenerPersonaSeleccionada()
+                        nuevoJefeCodigo = personaSeleccionada.codigo
+                self.archivoEnfocado.modificarDependencia(nodoSeleccionado.dep.codigo, nombreNuevo, nuevoJefeCodigo)
+                self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
 
     def menuEditarUbicacionDependecias(self):
-        if self.archivoEnfocado.raiz is None:  # Check if there are no options
+        if self.archivoEnfocado.raiz is None:  # Verificar si es que no hay opciones
             QMessageBox.critical(self, "Error", "No hay dependencias en el organigrama. Ingrese una con CrearDependencia")
-            return  # Return without performing any further actions
+            return  # Retornar sin realizar ninguna accion
         dialog = SelecionDeDependenciaDialog(self.archivoEnfocado.raiz, titulo= "Seleccionar dependencia a mover:", parent=self)
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -1476,9 +1488,9 @@ class EditorDeOrganigramas(QMainWindow):
                                                  nodosAExcluir=[nodoReubicado],
                                                  titulo="Seleccionar donde ubicar:", 
                                                  parent=self)
-            if dialog.widgetLista.count() == 0:  # Check if there are no options
+            if dialog.widgetLista.count() == 0:  # Verificar si es que no hay opciones
                 QMessageBox.critical(self, "Error", "No available options.")
-                return  # Return without performing any further actions
+                return  # Retornar sin realizar ninguna accion
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 nuevoNodoPadre = dialog.nodoSeleccionado()   
                 # Verificar que no se agreguen mas nodos de lo especificado como maximo
@@ -1489,23 +1501,36 @@ class EditorDeOrganigramas(QMainWindow):
                     self.archivoEnfocado.editarUbicacionDependencia(nodoReubicado, nuevoNodoPadre)
                     self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
 
-    def menuIngresarPersonas(self):
-        dialog = DatosPersonaDialog(titulo="Crear Persona", parent=self)
+    def menuIngresarPersona(self):
+        if len(self.archivoEnfocado.personasPorCodigo.keys()) <= 10000:
+            dialog = DatosPersonaDialog(titulo="Crear Persona", parent=self)
+        else:
+            QMessageBox.critical(self, "Error", "Se llego al limite de personas! Ya no hay codigos disponibles")
+            return
         if dialog.exec() == QDialog.DialogCode.Accepted:
             persona = dialog.obtenerPersona()
             self.archivoEnfocado.ingresarPersona(persona)
             self.actualizarBarraHeramientas()
 
-    def menuEliminarPersonas(self):
-        dialog = PersonaSelectionDialog(self.archivoEnfocado.personasPorCodigo.values(), 
-                                        titulo="Persona a Eliminar:", parent=self)
+    def menuEliminarPersona(self):
+
+        if any(self.archivoEnfocado.personasPorCodigo): #Verificacion de existencia de personas
+                dialog = PersonaSelectionDialog(self.archivoEnfocado.personasPorCodigo.values(), 
+                                            titulo="Persona a Eliminar:", parent=self)
+        else:
+            QMessageBox.critical(self, "Error", "No existen personar para eliminar")
+            return
         if dialog.exec() == QDialog.DialogCode.Accepted:
             personaSeleccionada = dialog.obtenerPersonaSeleccionada()
-            if personaSeleccionada:
-                self.archivoEnfocado.eliminarPersona(personaSeleccionada)
+            if personaSeleccionada is not None:
+                if self.archivoEnfocado.raiz is not None:
+                    self.archivoEnfocado.eliminarPersona(personaSeleccionada)
+                else: #Caso donde se quiere eliminar persona y no hay nodos para recorrer
+                    self.archivoEnfocado.personasPorCodigo.pop(personaSeleccionada.codigo)
                 self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
+                
 
-    def menuModificarPersonas(self):
+    def menuModificarPersona(self):
         dialog = PersonaSelectionDialog(self.archivoEnfocado.personasPorCodigo.values(), 
                                 titulo="Persona a Modificar:", parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -1519,7 +1544,7 @@ class EditorDeOrganigramas(QMainWindow):
             self.archivoEnfocado.modificarPersona(persona.codigo, datosPersona)
             self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
 
-    def menuAsignarPersoonasADependencias(self):
+    def menuAsignarPersonaADependencia(self):
         dialog = PersonaSelectionDialog(self.archivoEnfocado.personasPorCodigo.values(), 
                                 titulo="Persona a Asignar:", parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
