@@ -501,7 +501,7 @@ class PersonaSelectionDialog(QDialog):
         else:
             return None
     
-class PDFPopupWindow(QDialog):
+class VentanaPDFDialog(QDialog):
     """Caja de dialogo que muestra y da las opciones de guardar o imprimir un PDF"""
     
     def __init__(self, rutaPDF, parent=None):
@@ -1587,7 +1587,7 @@ class EditorDeOrganigramas(QMainWindow):
             nodoSeleccionado = dialog.nodoSeleccionado()
             rutaPDF = funcion(nodoSeleccionado)
             if rutaPDF:
-                pdf_popup = PDFPopupWindow(rutaPDF, parent=self)
+                pdf_popup = VentanaPDFDialog(rutaPDF, parent=self)
                 pdf_popup.exec()
 
     def menuPersonalPorDependencia(self):
