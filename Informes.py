@@ -1,28 +1,29 @@
 from fpdf import FPDF
 import warnings
+import os
 from Entidades.Arbol import *
 from Entidades.Dependencia import *
 from Entidades.Persona import *
 from Archivo import *
 
-warnings.simplefilter('default', DeprecationWarning)
+# TODO: remove / preguntar para que era a poroto?
+#warnings.simplefilter('default', DeprecationWarning)
 
-# TODO: Implementar
-class Informes:
-    def __init__(self, archivo: Archivo) -> None:
-        self.archivo = archivo
-         
-    def personalPorDependencia(self, dependencia : Dependencia):
-        """
-        Para una dependencia, presenta una lista de personas de la misma, 
-        ordenada alfabéticamente por apellido y nombre. No incluye a las dependencias sucesoras.
-        """
+class Informador:
+    
+    def __init__(self, rutaDeArchivos) -> None:
+        self.ruta_de_archivos = rutaDeArchivos
 
+    def personalPorDependencia(self, archivo: Archivo, dependencia : Dependencia) -> str:
+        """
+        Para una dependencia, presenta una lista de personas de la misma, ordenada alfabéticamente por apellido y nombre. 
+        No incluye a las dependencias sucesoras. El archivo se guarda como pdf y se retorna su ruta.
+        """
         # Crear PDF
         pdf = FPDF('P', 'mm', 'A4')
-        pdf.add_font('Calibri', '', r'.\fuentes\calibri.ttf')
-        pdf.add_font('CalibriBold', '', r'.\fuentes\calibrib.ttf')
-        pdf.add_font('CalibriItalic', '', r'.\fuentes\calibrii.ttf')
+        pdf.add_font('Calibri', '', r'.\Recursos\calibri.ttf')
+        pdf.add_font('CalibriBold', '', r'.\Recursos\calibrib.ttf')
+        pdf.add_font('CalibriItalic', '', r'.\Recursos\calibrii.ttf')
         pdf.add_page()
 
         # Imprimir nombre de dependencia
@@ -33,7 +34,7 @@ class Informes:
         pdf.write(txt='\n')
         pdf.set_font('Calibri', 'U', size=24)
         pdf.write(txt=f"Jefe:")
-        jefe = self.archivo.personasPorCodigo.get(dependencia.codigoResponsable)
+        jefe = archivo.personasPorCodigo.get(dependencia.codigoResponsable)
         pdf.set_font('Calibri', '', size=24)
         if jefe is None:
             pdf.write(txt=" No Asignado")
@@ -47,7 +48,7 @@ class Informes:
         # Imprimir Nombres y Apellidos
         pdf.set_font('CalibriItalic', '', size = 20)
         nombres = []
-        for persona in self.archivo.personasPorCodigo.values():
+        for persona in archivo.personasPorCodigo.values():
             if persona.dependencia == dependencia.codigo:
                 nombres.append(f"• {persona.apellido}, {persona.nombre}") 
         nombres.sort()
@@ -58,34 +59,41 @@ class Informes:
             pdf.set_font('CalibriItalic', '', size = 20)
 
         # Guardar el archivo
-        pdf.output("Personal_Por_Dependencia.pdf")
+        ruta = os.path.join(self.ruta_de_archivos, "Personal_Por_Dependencia.pdf")
+        pdf.output(ruta)
+        return ruta
   
-    def personalPorDependenciaExtendido(self, nodo: NodoArbol, pdf: FPDF = None, padre: NodoArbol = None):
+    def personalPorDependenciaExtendido(
+        self, archivo: Archivo, nodo: NodoArbol, pdf: FPDF = None, padre: NodoArbol = None) -> str:
+        """
+        Para una dependencia, presenta una lista de personas de la misma, ordenada alfabéticamente por apellido y nombre.
+        Incluye el detalle de las dependencias sucesoras. El archivo se guarda como pdf y se retorna su ruta.
+        """
         # Crear el pdf en la primera llamada
         if pdf is None:
             pdf = FPDF('P', 'mm', 'A4')
-            pdf.add_font('Calibri', '', r'.\fuentes\calibri.ttf')
-            pdf.add_font('CalibriBold', '', r'.\fuentes\calibrib.ttf')
-            pdf.add_font('CalibriItalic', '', r'.\fuentes\calibrii.ttf')
+            pdf.add_font('Calibri', '', r'.\Recursos\calibri.ttf')
+            pdf.add_font('CalibriBold', '', r'.\Recursos\calibrib.ttf')
+            pdf.add_font('CalibriItalic', '', r'.\Recursos\calibrii.ttf')
         
         # Imprimir Datos de cada Dependencia:
         pdf.add_page()
         
         # Imprimir nombre de dependencia
         pdf.set_font('CalibriBold', '', size=30)
-        pdf.write(txt=f'Dependencia: {nodo.data.nombre}')
+        pdf.write(txt=f'Dependencia: {nodo.dep.nombre}')
         
         # Imprimir padre si existe
         if padre is not None:
             pdf.write(txt='\n')
             pdf.set_font('Calibri', '', size=24)
-            pdf.write(txt=f'(Subordinado a {padre.data.nombre})')
+            pdf.write(txt=f'(Subordinado a {padre.dep.nombre})')
             
         # Imprimir Jefe
         pdf.write(txt='\n')
         pdf.set_font('Calibri', 'U', size=24)
         pdf.write(txt=f"Jefe:")
-        jefe = self.archivo.personasPorCodigo.get(nodo.data.codigoResponsable)
+        jefe = archivo.personasPorCodigo.get(nodo.dep.codigoResponsable)
         pdf.set_font('Calibri', '', size=24)
         if jefe is None:
             pdf.write(txt=" No Asignado")
@@ -99,8 +107,8 @@ class Informes:
         # Imprimir Nombres y Apellidos
         pdf.set_font('CalibriItalic', '', size=20)
         nombres = []
-        for persona in self.archivo.personasPorCodigo.values():
-            if persona.dependencia == nodo.data.codigo:
+        for persona in archivo.personasPorCodigo.values():
+            if persona.dependencia == nodo.dep.codigo:
                 nombres.append(f"• {persona.apellido}, {persona.nombre}")
         nombres.sort()
         for nombre in nombres:
@@ -110,19 +118,25 @@ class Informes:
             pdf.set_font('CalibriItalic', '', size=20)
 
         # Transversar todos los nodos hijos recursivamente
-        for child in nodo.children:
-            self.personalPorDependenciaExtendido(child, pdf, nodo)
+        for child in nodo.hijos:
+            self.personalPorDependenciaExtendido(archivo, child, pdf, nodo)
 
         # Si esta es la llamada incial, escribir el pdf con pdf.output()
         if padre is None:
-            pdf.output("Personal_Por_Dependencia_Extendido.pdf")
+            ruta = os.path.join(self.ruta_de_archivos, "Personal_Por_Dependencia_Extendido.pdf")
+            pdf.output(ruta)
+            return ruta
 
-    def salarioPorDependencia(self, dependencia: Dependencia):
+    def salarioPorDependencia(self, archivo: Archivo, dependencia: Dependencia):
+        """
+        Para una dependencia, presenta la cantidad de personal y el total de salarios para la dependencia. 
+        No incluye a las dependencias sucesoras. El archivo se guarda como pdf y se retorna su ruta.
+        """
         # Crear PDF
         pdf = FPDF('P', 'mm', 'A4')
-        pdf.add_font('Calibri', '', r'.\fuentes\calibri.ttf')
-        pdf.add_font('CalibriBold', '', r'.\fuentes\calibrib.ttf')
-        pdf.add_font('CalibriItalic', '', r'.\fuentes\calibrii.ttf')
+        pdf.add_font('Calibri', '', r'.\Recursos\calibri.ttf')
+        pdf.add_font('CalibriBold', '', r'.\Recursos\calibrib.ttf')
+        pdf.add_font('CalibriItalic', '', r'.\Recursos\calibrii.ttf')
         pdf.add_page()
 
         # Imprimir nombre de dependencia
@@ -133,7 +147,7 @@ class Informes:
         pdf.write(txt="\n\n")
         pdf.set_font('CalibriItalic', '', size = 20)
         salarios = []
-        for persona in self.archivo.personasPorCodigo.values():
+        for persona in archivo.personasPorCodigo.values():
             if persona.dependencia == dependencia.codigo:
                 salarios.append(persona.salario)
         pdf.write(txt=f'• Cantidad de personas: {len(salarios)}')
@@ -141,49 +155,56 @@ class Informes:
         pdf.write(txt=f'• Sueldo de la dependencia: {sum(salarios)}')
 
         # Guardar el archivo
-        pdf.output("Salario_Por_Dependencia.pdf")
+        ruta = os.path.join(self.ruta_de_archivos, "Salario_Por_Dependencia.pdf")
+        pdf.output(ruta)
+        return ruta
     
-    # TODO: Implementar
-    def salarioPorDependenciaExtendido(self, nodo: NodoArbol, pdf: FPDF = None, padre: NodoArbol = None):
+    def salarioPorDependenciaExtendido(
+        self, archivo: Archivo, nodo: NodoArbol, pdf: FPDF = None, padre: NodoArbol = None) -> str:
+        """
+        Para una dependencia, presenta la cantidad de personal y el total de salarios para la dependencia. Incluye el detalle
+        de las dependencias sucesoras. El archivo se guarda como pdf y se retorna su ruta.
+        """
         # Crear el pdf en la primera llamada
         if pdf is None:
             pdf = FPDF('P', 'mm', 'A4')
-            pdf.add_font('Calibri', '', r'.\fuentes\calibri.ttf')
-            pdf.add_font('CalibriBold', '', r'.\fuentes\calibrib.ttf')
-            pdf.add_font('CalibriItalic', '', r'.\fuentes\calibrii.ttf')
+            pdf.add_font('Calibri', '', r'.\Recursos\calibri.ttf')
+            pdf.add_font('CalibriBold', '', r'.\Recursos\calibrib.ttf')
+            pdf.add_font('CalibriItalic', '', r'.\Recursos\calibrii.ttf')
         
         # Imprimir Datos de cada Dependencia:
         pdf.add_page()
         
         # Imprimir nombre de dependencia
         pdf.set_font('CalibriBold', '', size=30)
-        pdf.write(txt=f'Dependencia: {nodo.data.nombre}')
+        pdf.write(txt=f'Dependencia: {nodo.dep.nombre}')
         # Imprimir padre si existe
         if padre is not None:
             pdf.write(txt='\n')
             pdf.set_font('Calibri', '', size=24)
-            pdf.write(txt=f'(Subordinado a {padre.data.nombre})')
+            pdf.write(txt=f'(Subordinado a {padre.dep.nombre})')
             
         # Imprimir Cantidad de empleados y Suma de salarios
         pdf.write(txt="\n\n")
         pdf.set_font('CalibriItalic', '', size = 20)
         salarios = []
-        for persona in self.archivo.personasPorCodigo.values():
-            if persona.dependencia == nodo.data.codigo:
+        for persona in archivo.personasPorCodigo.values():
+            if persona.dependencia == nodo.dep.codigo:
                 salarios.append(persona.salario)
         pdf.write(txt=f'• Cantidad de personas: {len(salarios)}')
         pdf.write(txt="\n\n")
         pdf.write(txt=f'• Sueldo de la dependencia: {sum(salarios)}')
 
         # Transversar todos los nodos hijos recursivamente
-        for child in nodo.children:
-            self.salarioPorDependenciaExtendido(child, pdf, nodo)
+        for child in nodo.hijos:
+            self.salarioPorDependenciaExtendido(archivo, child, pdf, nodo)
 
         # Si esta es la llamada incial, escribir el pdf con pdf.output()
         if padre is None:
-            pdf.output("Salario_Por_Dependencia_Extendido.pdf")
-        
+            ruta = os.path.join(self.ruta_de_archivos, "Salario_Por_Dependencia_Extendido.pdf")
+            pdf.output(ruta)
+            return ruta
+         
     # TODO: Implementar
-    def imprimirOrganigrama(self):
-        #imprimir el grafico del organigrama completo
+    def imprimirOrganigrama(self, archivo: Archivo, nodo: NodoArbol) -> str:
         pass

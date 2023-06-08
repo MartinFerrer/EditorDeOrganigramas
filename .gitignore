@@ -33,5 +33,15 @@ coverage.xml
 
 # Data file
 *.dat
-*.pdf
+*.dot
 *.png
+*.svg
+*.pdf
+*.org
+
+# Generated files
+.Archivos/
+
+# Incluir archivo de prueba
+!archivoPrueba.org
+
