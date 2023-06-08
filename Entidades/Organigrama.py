@@ -1,14 +1,8 @@
-from dataclasses import dataclass
 import param
+from dataclasses import dataclass
 from datetime import datetime
 from Entidades.BaseRegex import BaseRegex
 
-class OrganigramaRegex(BaseRegex):
-    patrones = {
-        "codigo": (r"^\d{5}$", "El código debe consistir en 5 dígitos"),
-        "organizacion": (r"^.{0,20}$", "La organización debe tener hasta 20 caracteres"),
-    }
-    
 @dataclass
 class Organigrama(param.Parameterized):
     """Clase que representa un organigrama"""
@@ -22,6 +16,13 @@ class Organigrama(param.Parameterized):
     fecha: datetime = param.Date(None)
     """Fecha del organigrama"""
     
-    # Representacion accessible para el usuario
+    # Representación accesible para el usuario
     def __str__(self):
         return f"Organigrama: {self.organizacion}, Código: {self.codigo}, Fecha: {self.fecha}"
+    
+class OrganigramaRegex(BaseRegex):
+    """Patrones RegEx y descripciones de los atributos de Organigrama"""
+    patrones = {
+        "codigo": (r"^\d{5}$", "El código debe consistir en 5 dígitos"),
+        "organizacion": (r"^.{0,20}$", "La organización debe tener hasta 20 caracteres"),
+    }
