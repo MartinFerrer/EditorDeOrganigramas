@@ -898,7 +898,11 @@ class EditorDeOrganigramas(QMainWindow):
 
     def contextualEliminarPersona(self):
         """Eliminar la persona seleccionada en el menu contextual"""
-        self.archivoEnfocado.eliminarPersona(self.menuContextualPersona)
+        if self.archivoEnfocado.raiz is not None:
+            self.archivoEnfocado.eliminarPersona(self.menuContextualPersona)
+
+        else: #Caso donde se quiere eliminar persona y no existe nodos para recorrer
+            self.archivoEnfocado.personasPorCodigo.pop(self.menuContextualPersona.codigo)
         self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
 
     def contextualModificarPersona(self):
@@ -1416,10 +1420,14 @@ class EditorDeOrganigramas(QMainWindow):
             self.refrescarVisualizacionOrganigrama(self.archivoEnfocado, nodoAGraficar)
 
     def menuCrearDependencia(self):
-        nombreDependencia, ok = self.obtenerTexto(
-        "Crear Dependencia", 
-        f"Ingrese el nombre para la dependencia:", 
-        regex=DependenciaRegex.patrones['nombre'])
+        if len(self.archivoEnfocado.codigosDeDependencias) <= 1000:
+            nombreDependencia, ok = self.obtenerTexto(
+            "Crear Dependencia", 
+            f"Ingrese el nombre para la dependencia:", 
+            regex=DependenciaRegex.patrones['nombre'])
+        else:
+            QMessageBox.critical(self, "Error", "Se llego al limite de dependencias! Ya no hay codigos disponibles")
+            return
         if ok:
             nodoSeleccionado = None
             if self.archivoEnfocado.raiz is not None:
@@ -1494,20 +1502,33 @@ class EditorDeOrganigramas(QMainWindow):
                     self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
 
     def menuIngresarPersona(self):
-        dialog = DatosPersonaDialog(titulo="Crear Persona", parent=self)
+        if len(self.archivoEnfocado.personasPorCodigo.keys()) <= 10000:
+            dialog = DatosPersonaDialog(titulo="Crear Persona", parent=self)
+        else:
+            QMessageBox.critical(self, "Error", "Se llego al limite de personas! Ya no hay codigos disponibles")
+            return
         if dialog.exec() == QDialog.DialogCode.Accepted:
             persona = dialog.obtenerPersona()
             self.archivoEnfocado.ingresarPersona(persona)
             self.actualizarBarraHeramientas()
 
     def menuEliminarPersona(self):
-        dialog = PersonaSelectionDialog(self.archivoEnfocado.personasPorCodigo.values(), 
-                                        titulo="Persona a Eliminar:", parent=self)
+
+        if any(self.archivoEnfocado.personasPorCodigo): #Verificacion de existencia de personas
+                dialog = PersonaSelectionDialog(self.archivoEnfocado.personasPorCodigo.values(), 
+                                            titulo="Persona a Eliminar:", parent=self)
+        else:
+            QMessageBox.critical(self, "Error", "No existen personar para eliminar")
+            return
         if dialog.exec() == QDialog.DialogCode.Accepted:
             personaSeleccionada = dialog.obtenerPersonaSeleccionada()
             if personaSeleccionada is not None:
-                self.archivoEnfocado.eliminarPersona(personaSeleccionada)
+                if self.archivoEnfocado.raiz is not None:
+                    self.archivoEnfocado.eliminarPersona(personaSeleccionada)
+                else: #Caso donde se quiere eliminar persona y no hay nodos para recorrer
+                    self.archivoEnfocado.personasPorCodigo.pop(personaSeleccionada.codigo)
                 self.refrescarVisualizacionOrganigrama(self.archivoEnfocado)
+                
 
     def menuModificarPersona(self):
         dialog = PersonaSelectionDialog(self.archivoEnfocado.personasPorCodigo.values(), 
