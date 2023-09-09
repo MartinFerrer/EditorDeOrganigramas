@@ -15,10 +15,10 @@ class Persona(param.Parameterized):
     documento: str = param.String(None, regex=r"^.{0,15}$")                                   
     """Documento de identidad única de la persona (hasta 15 letras)"""
     
-    nombre: str = param.String(None, regex=r"^[A-Za-z]{0,15}$")                                      
+    nombre: str = param.String(None, regex=r"^[A-Za-zÀ-ÿ_ ]{0,15}$")                                      
     """Nombre de la persona (hasta 15 letras)"""
     
-    apellido: str = param.String(None, regex=r"^[A-Za-z]{0,15}$")                                    
+    apellido: str = param.String(None, regex=r"^[A-Za-zÀ-ÿ_ ]{0,15}$")                                    
     """Apellido de la persona (hasta 15 letras)"""
     
     telefono: str = param.String(None, regex=r"^\d{0,12}$")                                    
@@ -40,8 +40,8 @@ class PersonaRegex(BaseRegex):
         "codigo": (r"^\d{4}$", "El código debe consistir en 4 dígitos"),
         "dependencia": (r"^\d{3}$", "El código de la dependencia debe consistir en 3 dígitos"),
         "documento": (r"^.{0,15}$", "El documento puede tener hasta 15 caracteres"),
-        "nombre": (r"^[A-Za-z]{0,15}$", "El nombre puede tener hasta 15 letras"),
-        "apellido": (r"^[A-Za-z]{0,15}$", "El apellido puede tener hasta 15 letras"),
+        "nombre": (r"^[A-Za-zÀ-ÿ_ ]{0,15}$", "El nombre puede tener hasta 15 letras"),
+        "apellido": (r"^[A-Za-zÀ-ÿ_ ]{0,15}$", "El apellido puede tener hasta 15 letras"),
         "telefono": (r"^\d{0,12}$", "El teléfono puede consistir en hasta 12 dígitos"),
         "direccion": (r"^.{0,30}$", "La dirección puede tener hasta 30 caracteres"),
         "salario": (r"^\d{0,9}$", "El salario puede consistir en hasta 9 dígitos"),
